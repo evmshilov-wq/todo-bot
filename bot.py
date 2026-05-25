@@ -337,13 +337,24 @@ def generate_calendar_markup(year: int, month: int, user_tz: str) -> types.Inlin
     return builder.as_markup()
 
 
-# === 7. ФУНКЦИИ ИИ С АВТОПРИОРИТЕЗАЦИЕЙ ===
 def get_ai_system_prompt(available_categories: list, user_tz: str) -> str:
     days_ru = {"Monday": "Понедельник", "Tuesday": "Вторник", "Wednesday": "Среда", "Thursday": "Четверг", "Friday": "Пятница", "Saturday": "Суббота", "Sunday": "Воскресенье"}
-    now_user = datetime.now(ZoneInfo(user_tz))
+    
+    # ЗАЩИТА: Если на сервере нет tzdata, подстрахуемся ручным сдвигом (для Europe/Moscow это +3)
+    try:
+        now_user = datetime.now(ZoneInfo(user_tz))
+    except Exception:
+        # Аварийный вариант, если ZoneInfo упал на хостинге
+        now_user = datetime.utcnow() + timedelta(hours=3)
+        
     day_ru = days_ru.get(now_user.strftime("%A"), now_user.strftime("%A"))
     current_date = f"{now_user.strftime('%Y-%m-%d')} ({day_ru}) Время: {now_user.strftime('%H:%M')}"
-    categories_str = ", ".join(available_categories) if available_categories else "Нет папок"
+    
+    # ЗАЩИТА: Если папок в базе нет, передаем дефолтные, чтобы ИИ не получал пустую строку
+    if not available_categories:
+        available_categories = ["🏠 Дом", "📚 Учеба", "💼 Работа", "🌱 Личное"]
+        
+    categories_str = ", ".join(available_categories)
     
     return f"""Ты — профессиональный ИИ-помощник по планированию времени. 
 ТЕКУЩЕЕ ВРЕМЯ И ДАТА ПОЛЬЗОВАТЕЛЯ: {current_date}. Часовой пояс: {user_tz}. 
