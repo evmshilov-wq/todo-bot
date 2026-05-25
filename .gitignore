@@ -1,0 +1,5 @@
+todo_bot.db
+token.json
+venv/
+.DS_Store
+__pycache__/
