@@ -4,9 +4,9 @@ import json
 import os
 import uuid
 import calendar
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone  # ИСПРАВЛЕНО: Добавлен timezone для безопасного расчета
 from zoneinfo import ZoneInfo
-from typing import Optional, List
+from typing import Optional, List, Literal  # ИСПРАВЛЕНО: Добавлен Literal для схемы Gemini
 
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import CommandStart, Command, StateFilter
@@ -20,11 +20,9 @@ import aiosqlite
 from google import genai
 from pydantic import BaseModel, Field
 
-# === 1. НАСТРОЙКА КЛЮЧЕЙ (ВСТАВЬ СВОИ ТОКЕНЫ СЮДА СТРОГО В КАВЫЧКАХ) ===
+# === 1. НАСТРОЙКА КЛЮЧЕЙ И КОНФИГУРАЦИЯ ===
 BOT_TOKEN = "8918217675:AAEurvtcuSiZsNHhr0UZgnKbl4hQHFIXEUk"  # Твой токен из BotFather
-# ИСПРАВЛЕНО: Теперь ключ Gemini берется из панели хостинга безопасно!
-import os
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")  # ИСПРАВЛЕНО: Безопасное чтение из панели хостинга
 
 DB_NAME = "todo_bot.db"
 DEFAULT_TZ = "Europe/Moscow"
@@ -53,12 +51,11 @@ MONTHS_RU = {
     7: "Июль", 8: "Август", 9: "Сентябрь", 10: "Октябрь", 11: "Ноябрь", 12: "Декабрь"
 }
 
-# Мапа для красивого отображения приоритетов в списках
 PRIORITY_MARKERS = {
-    "A": "🔴 ", # Высокий приоритет (Важно + Срочно)
-    "B": "🟡 ", # Средний приоритет (Важно + Несрочно)
-    "C": "🔵 ", # Низкий приоритет (Неважно + Срочно)
-    "D": "⚪ "  # Бэклог (Неважно + Несрочно)
+    "A": "🔴 ", 
+    "B": "🟡 ", 
+    "C": "🔵 ", 
+    "D": "⚪ "  
 }
 
 # === 2. PYDANTIC СХЕМЫ ДЛЯ НАДЕЖНОЙ СТРУКТУРИЗАЦИИ ИИ ===
@@ -68,7 +65,8 @@ class TaskModel(BaseModel):
     date_time: Optional[str] = Field(None, description="Дата и время в формате YYYY-MM-DD HH:MM или null")
     end_time: Optional[str] = Field(None, description="Дата и время окончания в формате YYYY-MM-DD HH:MM или null")
     is_timeless: bool = Field(description="true, если указана только дата без конкретного часа/минут. false, если есть точное время")
-    priority: str = Field(description="Определи приоритет задачи. Верни строго одну букву: 'A' (высокий/критичный/срочный дедлайн), 'B' (средний/проектный/учеба), 'C' (низкий/рутина/быстрое дело), 'D' (минимальный/бэклог/когда-нибудь)")
+    # ИСПРАВЛЕНО: Строгий Literal убирает ошибку 400 Bad Request на новых SDK Google
+    priority: Literal["A", "B", "C", "D"] = Field(description="Приоритет: 'A' (критично/дедлайн), 'B' (важно/учеба), 'C' (рутина), 'D' (бэклог)")
 
 class TaskListModel(BaseModel):
     tasks: List[TaskModel] = Field(description="Список распознанных задач")
@@ -146,7 +144,6 @@ async def init_db():
     async with aiosqlite.connect(DB_NAME) as db:
         await db.execute('CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, telegram_id INTEGER UNIQUE, timezone TEXT DEFAULT "Europe/Moscow")')
         await db.execute('CREATE TABLE IF NOT EXISTS categories (id INTEGER PRIMARY KEY, user_id INTEGER, name TEXT)')
-        # ОБНОВЛЕНО: Таблица задач теперь содержит поле priority
         await db.execute('''CREATE TABLE IF NOT EXISTS tasks (
             id INTEGER PRIMARY KEY, user_id INTEGER, text TEXT, category_id INTEGER, date_time TEXT, 
             is_timeless INTEGER DEFAULT 0, is_completed INTEGER DEFAULT 0, is_reminded INTEGER DEFAULT 0,
@@ -337,20 +334,19 @@ def generate_calendar_markup(year: int, month: int, user_tz: str) -> types.Inlin
     return builder.as_markup()
 
 
+# === 7. ФУНКЦИИ ИИ С АВТОПРИОРИТЕЗАЦИЕЙ ===
 def get_ai_system_prompt(available_categories: list, user_tz: str) -> str:
     days_ru = {"Monday": "Понедельник", "Tuesday": "Вторник", "Wednesday": "Среда", "Thursday": "Четверг", "Friday": "Пятница", "Saturday": "Суббота", "Sunday": "Воскресенье"}
     
-    # ЗАЩИТА: Если на сервере нет tzdata, подстрахуемся ручным сдвигом (для Europe/Moscow это +3)
+    # ИСПРАВЛЕНО: Безопасный расчет времени для Linux-серверов хостинга
     try:
         now_user = datetime.now(ZoneInfo(user_tz))
     except Exception:
-        # Аварийный вариант, если ZoneInfo упал на хостинге
-        now_user = datetime.utcnow() + timedelta(hours=3)
+        now_user = datetime.now(timezone.utc) + timedelta(hours=3)
         
     day_ru = days_ru.get(now_user.strftime("%A"), now_user.strftime("%A"))
     current_date = f"{now_user.strftime('%Y-%m-%d')} ({day_ru}) Время: {now_user.strftime('%H:%M')}"
     
-    # ЗАЩИТА: Если папок в базе нет, передаем дефолтные, чтобы ИИ не получал пустую строку
     if not available_categories:
         available_categories = ["🏠 Дом", "📚 Учеба", "💼 Работа", "🌱 Личное"]
         
@@ -814,7 +810,6 @@ async def process_mod_save_all(callback_query: types.CallbackQuery, state: FSMCo
         if not item.get("task_text"): continue
         cat_id = next((c["id"] for c in categories if c["name"] == item.get("category")), None)
         g_id = add_event_to_google(item["task_text"], item.get("date_time"), item.get("end_time"), bool(item.get("is_timeless")), user_tz) if item.get("date_time") else None
-        # ОБНОВЛЕНО: Передаем priority при сохранении в SQLite
         await add_task(callback_query.from_user.id, item["task_text"], cat_id, item.get("date_time"), 1 if item.get("is_timeless") else 0, 1 if item.get("is_recurring") == 1 else 0, item.get("recurrence_rule"), item.get("end_time"), g_id, item.get("priority", "B"))
     text, reply_markup = await get_main_dashboard(callback_query.from_user.id, callback_query.from_user.full_name)
     await callback_query.message.answer("🚀 Успешно сохранено!", reply_markup=reply_markup)
