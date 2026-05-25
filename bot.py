@@ -22,7 +22,9 @@ from pydantic import BaseModel, Field
 
 # === 1. НАСТРОЙКА КЛЮЧЕЙ (ВСТАВЬ СВОИ ТОКЕНЫ СЮДА СТРОГО В КАВЫЧКАХ) ===
 BOT_TOKEN = "8918217675:AAEurvtcuSiZsNHhr0UZgnKbl4hQHFIXEUk"  # Твой токен из BotFather
-GEMINI_API_KEY = "AIzaSyA37_1ljDwenhlIenMc2Lln-P0bfDPz5ks"     # Твой ключ из AI Studio
+# ИСПРАВЛЕНО: Теперь ключ Gemini берется из панели хостинга безопасно!
+import os
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 DB_NAME = "todo_bot.db"
 DEFAULT_TZ = "Europe/Moscow"
