@@ -4,9 +4,9 @@ import json
 import os
 import uuid
 import calendar
-from datetime import datetime, timedelta, timezone  # ИСПРАВЛЕНО: Добавлен timezone для безопасного расчета
+from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
-from typing import Optional, List, Literal  # ИСПРАВЛЕНО: Добавлен Literal для схемы Gemini
+from typing import Optional, List, Literal
 
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import CommandStart, Command, StateFilter
@@ -18,11 +18,12 @@ from aiogram.types import ReplyKeyboardRemove
 
 import aiosqlite
 from google import genai
+from google.genai import types as genai_types  # ИСПРАВЛЕНО: Импортируем типы для конфигурации Google
 from pydantic import BaseModel, Field
 
 # === 1. НАСТРОЙКА КЛЮЧЕЙ И КОНФИГУРАЦИЯ ===
 BOT_TOKEN = "8918217675:AAEurvtcuSiZsNHhr0UZgnKbl4hQHFIXEUk"  # Твой токен из BotFather
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")  # ИСПРАВЛЕНО: Безопасное чтение из панели хостинга
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")  # Считывается из переменных окружения хостинга
 
 DB_NAME = "todo_bot.db"
 DEFAULT_TZ = "Europe/Moscow"
@@ -65,7 +66,6 @@ class TaskModel(BaseModel):
     date_time: Optional[str] = Field(None, description="Дата и время в формате YYYY-MM-DD HH:MM или null")
     end_time: Optional[str] = Field(None, description="Дата и время окончания в формате YYYY-MM-DD HH:MM или null")
     is_timeless: bool = Field(description="true, если указана только дата без конкретного часа/минут. false, если есть точное время")
-    # ИСПРАВЛЕНО: Строгий Literal убирает ошибку 400 Bad Request на новых SDK Google
     priority: Literal["A", "B", "C", "D"] = Field(description="Приоритет: 'A' (критично/дедлайн), 'B' (важно/учеба), 'C' (рутина), 'D' (бэклог)")
 
 class TaskListModel(BaseModel):
@@ -338,7 +338,6 @@ def generate_calendar_markup(year: int, month: int, user_tz: str) -> types.Inlin
 def get_ai_system_prompt(available_categories: list, user_tz: str) -> str:
     days_ru = {"Monday": "Понедельник", "Tuesday": "Вторник", "Wednesday": "Среда", "Thursday": "Четверг", "Friday": "Пятница", "Saturday": "Суббота", "Sunday": "Воскресенье"}
     
-    # ИСПРАВЛЕНО: Безопасный расчет времени для Linux-серверов хостинга
     try:
         now_user = datetime.now(ZoneInfo(user_tz))
     except Exception:
@@ -368,26 +367,38 @@ def get_ai_system_prompt(available_categories: list, user_tz: str) -> str:
 async def parse_tasks_batch_with_ai(user_text: str, available_categories: list, user_tz: str) -> list:
     prompt = get_ai_system_prompt(available_categories, user_tz) + f'\n\nТекст пользователя: "{user_text}"'
     try:
+        # ИСПРАВЛЕНО: Используем строго типизированный GenerateContentConfig для google-genai 2.6+
         response = client.models.generate_content(
-            model=AI_MODEL, contents=prompt,
-            config={'response_mime_type': 'application/json', 'response_schema': TaskListModel}
+            model=AI_MODEL, 
+            contents=prompt,
+            config=genai_types.GenerateContentConfig(
+                response_mime_type='application/json', 
+                response_schema=TaskListModel
+            )
         )
         result = json.loads(response.text.strip())
         return result.get("tasks", [])
     except Exception as e:
+        logging.error(f"Ошибка ИИ-парсинга текста: {e}")
         if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e): return "LIMIT_REACHED"
         return [{"task_text": user_text, "category": None, "date_time": None, "end_time": None, "is_timeless": True, "priority": "B"}]
 
 async def parse_recurring_task_with_ai(user_text: str, available_categories: list, user_tz: str) -> list:
     prompt = f"Модуль циклов. Категории: {available_categories}. Разбери задачу."
     try:
+        # ИСПРАВЛЕНО: Используем строго типизированный GenerateContentConfig для google-genai 2.6+
         response = client.models.generate_content(
-            model=AI_MODEL, contents=prompt,
-            config={'response_mime_type': 'application/json', 'response_schema': TaskListModel}
+            model=AI_MODEL, 
+            contents=prompt,
+            config=genai_types.GenerateContentConfig(
+                response_mime_type='application/json', 
+                response_schema=TaskListModel
+            )
         )
         result = json.loads(response.text.strip())
         return result.get("tasks", [])
     except Exception as e:
+        logging.error(f"Ошибка ИИ-парсинга циклов: {e}")
         if "429" in str(e): return "LIMIT_REACHED"
         return [{"task_text": user_text, "category": None, "date_time": None, "end_time": None, "is_timeless": True, "priority": "B"}]
 
@@ -395,14 +406,20 @@ async def parse_voice_batch_with_ai(file_path: str, available_categories: list, 
     system_prompt = get_ai_system_prompt(available_categories, user_tz)
     try:
         uploaded_file = client.files.upload(file=file_path)
+        # ИСПРАВЛЕНО: Используем строго типизированный GenerateContentConfig для google-genai 2.6+
         response = client.models.generate_content(
-            model=AI_MODEL, contents=[uploaded_file, system_prompt],
-            config={'response_mime_type': 'application/json', 'response_schema': TaskListModel}
+            model=AI_MODEL, 
+            contents=[uploaded_file, system_prompt],
+            config=genai_types.GenerateContentConfig(
+                response_mime_type='application/json', 
+                response_schema=TaskListModel
+            )
         )
         client.files.delete(name=uploaded_file.name)
         result = json.loads(response.text.strip())
         return result.get("tasks", [])
     except Exception as e:
+        logging.error(f"Ошибка ИИ-парсинга голоса: {e}")
         if "429" in str(e): return "LIMIT_REACHED"
         return []
 
@@ -542,9 +559,10 @@ async def process_menu_rec_task(callback_query: types.CallbackQuery, state: FSMC
 
 @dp.message(TaskStates.waiting_for_recurring_text)
 async def handle_recurring_text_parse(message: types.Message, state: FSMContext):
-    categories = await get_user_categories(message.from_user.id)
+    raw_categories = await get_user_categories(message.from_user.id)
+    categories_list = [c["name"] for c in raw_categories] if raw_categories else []
     user_tz = await get_user_timezone(message.from_user.id)
-    ai_tasks_list = await parse_recurring_task_with_ai(message.text, [c["name"] for c in categories], user_tz)
+    ai_tasks_list = await parse_recurring_task_with_ai(message.text, categories_list, user_tz)
     
     if ai_tasks_list == "LIMIT_REACHED":
         await message.answer("⚠️ Превышен лимит запросов к ИИ. Подожди минуту.")
@@ -562,9 +580,12 @@ async def handle_voice_message(message: types.Message, state: FSMContext):
         voice_file = await bot.get_file(message.voice.file_id)
         local_filename = f"voice_{message.from_user.id}_{uuid.uuid4().hex[:6]}.ogg"
         await bot.download_file(file_path=voice_file.file_path, destination=local_filename)
-        categories = await get_user_categories(message.from_user.id)
+        
+        raw_categories = await get_user_categories(message.from_user.id)
+        categories_list = [c["name"] for c in raw_categories] if raw_categories else []
         user_tz = await get_user_timezone(message.from_user.id)
-        ai_tasks_list = await parse_voice_batch_with_ai(local_filename, [c["name"] for c in categories], user_tz)
+        
+        ai_tasks_list = await parse_voice_batch_with_ai(local_filename, categories_list, user_tz)
         if os.path.exists(local_filename): os.remove(local_filename)
         
         if ai_tasks_list == "LIMIT_REACHED":
@@ -586,7 +607,7 @@ async def ui_view_tasks_callback(callback_query: types.CallbackQuery):
     tz_name = await get_user_timezone(user_id)
     now_user = datetime.now(ZoneInfo(tz_name))
     markup = generate_calendar_markup(now_user.year, now_user.month, tz_name)
-    await callback_query.message.edit_text("📅 **КАЛЕНДАРЬ ЗАДАЧ**\nВыбери интересующий день:", reply_markup=markup, parse_mode="Markdown")
+    await callback_query.message.edit_text("📅 **KAЛЕНДАРЬ ЗАДАЧ**\nВыбери интересующий день:", reply_markup=markup, parse_mode="Markdown")
 
 @dp.callback_query(F.data.startswith("cal_set_"), StateFilter("*"))
 async def process_calendar_navigation(callback_query: types.CallbackQuery):
@@ -594,7 +615,7 @@ async def process_calendar_navigation(callback_query: types.CallbackQuery):
     year, month = int(parts[2]), int(parts[3])
     tz_name = await get_user_timezone(callback_query.from_user.id)
     markup = generate_calendar_markup(year, month, tz_name)
-    await callback_query.message.edit_text("📅 **КАЛЕНДАРЬ ЗАДАЧ**\nВыбери интересующий день:", reply_markup=markup, parse_mode="Markdown")
+    await callback_query.message.edit_text("📅 **KAЛЕНДАРЬ ЗАДАЧ**\nВыбери интересующий день:", reply_markup=markup, parse_mode="Markdown")
     await callback_query.answer()
 
 @dp.callback_query(lambda c: c.data == "view_digests_menu")
@@ -723,9 +744,12 @@ async def process_mod_edit_item_prompt(callback_query: types.CallbackQuery, stat
 async def handle_mod_item_text_edited(message: types.Message, state: FSMContext):
     state_data = await state.get_data()
     tasks_list, item_idx = state_data.get("temp_tasks", []), state_data.get("editing_item_idx")
-    categories = await get_user_categories(message.from_user.id)
+    
+    raw_categories = await get_user_categories(message.from_user.id)
+    categories_list = [c["name"] for c in raw_categories] if raw_categories else []
     user_tz = await get_user_timezone(message.from_user.id)
-    parsed_updated = await parse_tasks_batch_with_ai(message.text, [c["name"] for c in categories], user_tz)
+    
+    parsed_updated = await parse_tasks_batch_with_ai(message.text, categories_list, user_tz)
     
     if parsed_updated == "LIMIT_REACHED":
         await message.answer("⚠️ Ошибка: Превышен лимит запросов к ИИ.")
@@ -783,9 +807,11 @@ async def process_complete_task_inline(callback_query: types.CallbackQuery):
 
 @dp.message(StateFilter(None))
 async def handle_text_moderation(message: types.Message, state: FSMContext):
-    categories = await get_user_categories(message.from_user.id)
+    raw_categories = await get_user_categories(message.from_user.id)
+    categories_list = [c["name"] for c in raw_categories] if raw_categories else []
     user_tz = await get_user_timezone(message.from_user.id)
-    ai_tasks_list = await parse_tasks_batch_with_ai(message.text, [c["name"] for c in categories], user_tz)
+    
+    ai_tasks_list = await parse_tasks_batch_with_ai(message.text, categories_list, user_tz)
     
     if ai_tasks_list == "LIMIT_REACHED":
         await message.answer("⚠️ Превышен лимит запросов к ИИ. Подожди минуту.")
