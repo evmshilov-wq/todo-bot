@@ -22,8 +22,7 @@ from google.genai import types as genai_types
 from pydantic import BaseModel, Field
 
 # === 1. НАСТРОЙКА КЛЮЧЕЙ И КОНФИГУРАЦИЯ ===
-BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-# Считывается из переменных окружения хостинга (то, что мы вводили в панели)
+BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")       
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")  
 
 DB_NAME = "/data/todo_bot.db"
@@ -36,14 +35,9 @@ logging.basicConfig(level=logging.INFO)
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
-# ИСПРАВЛЕНО: Интегрировали твой рабочий прокси-сервер для обхода блокировок Google
-PROXY_URL = "http://tmxjodcr:1pwh3vmyezww@38.154.203.95:5863" 
-
-# Инициализируем клиент Gemini со встроенными HTTP-опциями проксирования
-client = genai.Client(
-    api_key=GEMINI_API_KEY,
-    http_options={'proxy': PROXY_URL}
-)
+# ИСПРАВЛЕНО: Чистая инициализация клиента для сервера в Варшаве. 
+# Никаких прокси внутри HttpOptions, чтобы Pydantic не падал с ошибкой.
+client = genai.Client(api_key=GEMINI_API_KEY)
 
 class TaskStates(StatesGroup):
     waiting_for_new_text = State()      
