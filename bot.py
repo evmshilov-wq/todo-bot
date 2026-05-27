@@ -18,12 +18,13 @@ from aiogram.types import ReplyKeyboardRemove
 
 import aiosqlite
 from google import genai
-from google.genai import types as genai_types  # ИСПРАВЛЕНО: Импортируем типы для конфигурации Google
+from google.genai import types as genai_types
 from pydantic import BaseModel, Field
 
 # === 1. НАСТРОЙКА КЛЮЧЕЙ И КОНФИГУРАЦИЯ ===
 BOT_TOKEN = "8918217675:AAEurvtcuSiZsNHhr0UZgnKbl4hQHFIXEUk"  # Твой токен из BotFather
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")  # Считывается из переменных окружения хостинга
+# Считывается из переменных окружения хостинга (то, что мы вводили в панели)
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")  
 
 DB_NAME = "todo_bot.db"
 DEFAULT_TZ = "Europe/Moscow"
@@ -34,7 +35,15 @@ logging.basicConfig(level=logging.INFO)
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
-client = genai.Client(api_key=GEMINI_API_KEY)
+
+# ИСПРАВЛЕНО: Интегрировали твой рабочий прокси-сервер для обхода блокировок Google
+PROXY_URL = "http://tmxjodcr:1pwh3vmyezww@38.154.203.95:5863" 
+
+# Инициализируем клиент Gemini со встроенными HTTP-опциями проксирования
+client = genai.Client(
+    api_key=GEMINI_API_KEY,
+    http_options={'proxy': PROXY_URL}
+)
 
 class TaskStates(StatesGroup):
     waiting_for_new_text = State()      
@@ -367,7 +376,6 @@ def get_ai_system_prompt(available_categories: list, user_tz: str) -> str:
 async def parse_tasks_batch_with_ai(user_text: str, available_categories: list, user_tz: str) -> list:
     prompt = get_ai_system_prompt(available_categories, user_tz) + f'\n\nТекст пользователя: "{user_text}"'
     try:
-        # ИСПРАВЛЕНО: Используем строго типизированный GenerateContentConfig для google-genai 2.6+
         response = client.models.generate_content(
             model=AI_MODEL, 
             contents=prompt,
@@ -386,7 +394,6 @@ async def parse_tasks_batch_with_ai(user_text: str, available_categories: list, 
 async def parse_recurring_task_with_ai(user_text: str, available_categories: list, user_tz: str) -> list:
     prompt = f"Модуль циклов. Категории: {available_categories}. Разбери задачу."
     try:
-        # ИСПРАВЛЕНО: Используем строго типизированный GenerateContentConfig для google-genai 2.6+
         response = client.models.generate_content(
             model=AI_MODEL, 
             contents=prompt,
@@ -406,7 +413,6 @@ async def parse_voice_batch_with_ai(file_path: str, available_categories: list, 
     system_prompt = get_ai_system_prompt(available_categories, user_tz)
     try:
         uploaded_file = client.files.upload(file=file_path)
-        # ИСПРАВЛЕНО: Используем строго типизированный GenerateContentConfig для google-genai 2.6+
         response = client.models.generate_content(
             model=AI_MODEL, 
             contents=[uploaded_file, system_prompt],
@@ -607,7 +613,7 @@ async def ui_view_tasks_callback(callback_query: types.CallbackQuery):
     tz_name = await get_user_timezone(user_id)
     now_user = datetime.now(ZoneInfo(tz_name))
     markup = generate_calendar_markup(now_user.year, now_user.month, tz_name)
-    await callback_query.message.edit_text("📅 **KAЛЕНДАРЬ ЗАДАЧ**\nВыбери интересующий день:", reply_markup=markup, parse_mode="Markdown")
+    await callback_query.message.edit_text("📅 **КАЛЕНДАРЬ ЗАДАЧ**\nВыбери интересующий день:", reply_markup=markup, parse_mode="Markdown")
 
 @dp.callback_query(F.data.startswith("cal_set_"), StateFilter("*"))
 async def process_calendar_navigation(callback_query: types.CallbackQuery):
@@ -615,7 +621,7 @@ async def process_calendar_navigation(callback_query: types.CallbackQuery):
     year, month = int(parts[2]), int(parts[3])
     tz_name = await get_user_timezone(callback_query.from_user.id)
     markup = generate_calendar_markup(year, month, tz_name)
-    await callback_query.message.edit_text("📅 **KAЛЕНДАРЬ ЗАДАЧ**\nВыбери интересующий день:", reply_markup=markup, parse_mode="Markdown")
+    await callback_query.message.edit_text("📅 **КАЛЕНДАРЬ ЗАДАЧ**\nВыбери интересующий день:", reply_markup=markup, parse_mode="Markdown")
     await callback_query.answer()
 
 @dp.callback_query(lambda c: c.data == "view_digests_menu")
