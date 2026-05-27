@@ -22,7 +22,7 @@ from google.genai import types as genai_types
 from pydantic import BaseModel, Field
 
 # === 1. НАСТРОЙКА КЛЮЧЕЙ И КОНФИГУРАЦИЯ ===
-BOT_TOKEN = "8918217675:AAEurvtcuSiZsNHhr0UZgnKbl4hQHFIXEUk"  # Твой токен из BotFather
+BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 # Считывается из переменных окружения хостинга (то, что мы вводили в панели)
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")  
 
@@ -89,18 +89,25 @@ def get_google_calendar_service():
     from googleapiclient.discovery import build
     
     creds = None
-    if os.path.exists('token.json'):
-        creds = Credentials.from_authorized_user_file('token.json', SCOPES)
+    # ИСПРАВЛЕНО: Перенесли token.json в постоянное хранилище /data
+    token_path = '/data/token.json'
+    credentials_path = '/data/credentials.json' # Если используешь credentials локально
+    
+    if os.path.exists(token_path):
+        creds = Credentials.from_authorized_user_file(token_path, SCOPES)
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
         else:
-            if not os.path.exists('credentials.json'):
+            # Подстраховка: ищем credentials сначала в /data, потом в корне
+            active_creds_path = credentials_path if os.path.exists(credentials_path) else 'credentials.json'
+            if not os.path.exists(active_creds_path):
                 print("⚠️ Файл credentials.json не найден!")
                 return None
-            flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
+            flow = InstalledAppFlow.from_client_secrets_file(active_creds_path, SCOPES)
             creds = flow.run_local_server(port=0)
-        with open('token.json', 'w') as token:
+        # ИСПРАВЛЕНО: Записываем созданный токен строго в /data
+        with open(token_path, 'w') as token:
             token.write(creds.to_json())
     return build('calendar', 'v3', credentials=creds)
 
