@@ -26,7 +26,7 @@ BOT_TOKEN = "8918217675:AAEurvtcuSiZsNHhr0UZgnKbl4hQHFIXEUk"  # Твой ток�
 # Считывается из переменных окружения хостинга (то, что мы вводили в панели)
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")  
 
-DB_NAME = "todo_bot.db"
+DB_NAME = "/data/todo_bot.db"
 DEFAULT_TZ = "Europe/Moscow"
 SCOPES = ['https://www.googleapis.com/auth/calendar.events']
 AI_MODEL = "models/gemini-2.5-flash-lite"  
