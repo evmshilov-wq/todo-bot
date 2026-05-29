@@ -6,3 +6,6 @@ google-api-python-client>=2.128.0
 google-auth-httplib2>=0.2.0
 google-auth-oauthlib>=1.2.0
 tzdata==2026.1
+apscheduler
+SQLAlchemy>=2.0.30
+python-dotenv>=1.0.0

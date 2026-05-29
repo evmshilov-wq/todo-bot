@@ -1,0 +1,144 @@
+from datetime import datetime, date, timedelta
+from sqlalchemy import select, update, delete
+from zoneinfo import ZoneInfo
+from app.database.engine import async_session
+from app.database.models import User, Category, Task
+from app.config import DEFAULT_TZ
+
+async def get_all_users():
+    async with async_session() as session:
+        users = await session.scalars(select(User))
+        return [{"telegram_id": u.telegram_id, "timezone": u.timezone or DEFAULT_TZ} for u in users]
+
+async def create_user_with_default_categories(telegram_id: int):
+    async with async_session() as session:
+        user = await session.scalar(select(User).where(User.telegram_id == telegram_id))
+        if not user:
+            new_user = User(telegram_id=telegram_id, timezone=DEFAULT_TZ)
+            session.add(new_user)
+            for cat_name in ["🏠 Дом", "📚 Учеба", "💼 Работа", "🌱 Личное"]:
+                session.add(Category(user_id=telegram_id, name=cat_name))
+            await session.commit()
+
+async def get_user_timezone(telegram_id: int) -> str:
+    async with async_session() as session:
+        user = await session.scalar(select(User).where(User.telegram_id == telegram_id))
+        return user.timezone if user else DEFAULT_TZ
+
+async def get_user_categories(telegram_id: int):
+    async with async_session() as session:
+        cats = await session.scalars(select(Category).where(Category.user_id == telegram_id))
+        return [{"id": c.id, "name": c.name} for c in cats]
+
+async def add_category_db(user_id: int, name: str):
+    async with async_session() as session:
+        session.add(Category(user_id=user_id, name=name))
+        await session.commit()
+
+async def delete_category_db(category_id: int):
+    async with async_session() as session:
+        await session.execute(update(Task).where(Task.category_id == category_id).values(category_id=None))
+        await session.execute(delete(Category).where(Category.id == category_id))
+        await session.commit()
+
+async def add_task(user_id: int, text: str, category_id: int, date_time: str, is_timeless: int, is_recurring: int = 0, recurrence_rule: str = None, end_time: str = None, google_event_id: str = None, priority: str = "B"):
+    async with async_session() as session:
+        task = Task(user_id=user_id, text=text, category_id=category_id, date_time=date_time, is_timeless=is_timeless, is_recurring=is_recurring, recurrence_rule=recurrence_rule, end_time=end_time, google_event_id=google_event_id, priority=priority)
+        session.add(task)
+        await session.commit()
+
+async def get_task_by_id(task_id: int):
+    async with async_session() as session:
+        task = await session.scalar(select(Task).where(Task.id == task_id))
+        if task:
+            return {"id": task.id, "text": task.text, "google_event_id": task.google_event_id, "priority": task.priority}
+        return None
+
+async def update_task_text_db(task_id: int, new_text: str):
+    async with async_session() as session:
+        await session.execute(update(Task).where(Task.id == task_id).values(text=new_text))
+        await session.commit()
+
+async def update_task_datetime_db(task_id: int, date_time: str, is_timeless: int, google_event_id: str):
+    async with async_session() as session:
+        await session.execute(update(Task).where(Task.id == task_id).values(date_time=date_time, is_timeless=is_timeless, google_event_id=google_event_id))
+        await session.commit()
+
+async def delete_task_db(task_id: int):
+    async with async_session() as session:
+        await session.execute(delete(Task).where(Task.id == task_id))
+        await session.commit()
+
+async def complete_task_db(task_id: int):
+    async with async_session() as session:
+        await session.execute(update(Task).where(Task.id == task_id).values(is_completed=1))
+        await session.commit()
+
+async def get_tasks_for_date(user_id: int, target_date: date):
+    date_str = target_date.strftime("%Y-%m-%d")
+    async with async_session() as session:
+        query = select(Task, Category.name.label("category_name")).outerjoin(Category, Task.category_id == Category.id).where(
+            Task.user_id == user_id,
+            Task.is_completed == 0,
+            ((Task.date_time.like(f"{date_str}%")) | ((Task.is_timeless == 1) & (Task.date_time.like(f"{date_str}%"))))
+        ).order_by(Task.priority.asc(), Task.is_timeless.asc(), Task.date_time.asc())
+        
+        result = await session.execute(query)
+        rows = result.all()
+        return [{"id": t.id, "text": t.text, "date_time": t.date_time, "is_timeless": t.is_timeless, "category": cat_name, "is_recurring": t.is_recurring, "recurrence_rule": t.recurrence_rule, "end_time": t.end_time, "google_event_id": t.google_event_id, "priority": t.priority} for t, cat_name in rows]
+
+async def get_tasks_for_today(user_id: int):
+    tz_name = await get_user_timezone(user_id)
+    today_date = datetime.now(ZoneInfo(tz_name)).date()
+    return await get_tasks_for_date(user_id, today_date)
+
+async def get_completed_tasks_for_today(user_id: int):
+    tz_name = await get_user_timezone(user_id)
+    date_str = datetime.now(ZoneInfo(tz_name)).strftime("%Y-%m-%d")
+    async with async_session() as session:
+        query = select(Task.id).where(
+            Task.user_id == user_id,
+            Task.is_completed == 1,
+            ((Task.date_time.like(f"{date_str}%")) | ((Task.is_timeless == 1) & (Task.date_time.like(f"{date_str}%"))))
+        )
+        return (await session.scalars(query)).all()
+
+async def get_tasks_without_date(user_id: int):
+    async with async_session() as session:
+        query = select(Task, Category.name.label("category_name")).outerjoin(Category, Task.category_id == Category.id).where(
+            Task.user_id == user_id,
+            Task.is_completed == 0,
+            Task.date_time.is_(None)
+        ).order_by(Task.priority.asc(), Task.id.desc())
+        
+        rows = (await session.execute(query)).all()
+        return [{"id": t.id, "text": t.text, "date_time": None, "is_timeless": 1, "category": cat_name, "end_time": None, "google_event_id": t.google_event_id, "priority": t.priority} for t, cat_name in rows]
+
+async def get_tasks_by_category(user_id: int, category_id: int):
+    async with async_session() as session:
+        query = select(Task, Category.name.label("category_name")).outerjoin(Category, Task.category_id == Category.id).where(
+            Task.user_id == user_id,
+            Task.is_completed == 0,
+            Task.category_id == category_id
+        ).order_by(Task.priority.asc(), Task.is_timeless.asc(), Task.date_time.asc())
+        
+        rows = (await session.execute(query)).all()
+        return [{"id": t.id, "text": t.text, "date_time": t.date_time, "is_timeless": t.is_timeless, "category": cat_name, "is_recurring": t.is_recurring, "recurrence_rule": t.recurrence_rule, "end_time": t.end_time, "google_event_id": t.google_event_id, "priority": t.priority} for t, cat_name in rows]
+
+async def get_stats_for_digest(user_id: int, days: int) -> dict:
+    tz_name = await get_user_timezone(user_id)
+    now_user = datetime.now(ZoneInfo(tz_name))
+    start_date = (now_user - timedelta(days=days-1)).strftime("%Y-%m-%d")
+    
+    async with async_session() as session:
+        comp_query = select(Task, Category.name.label("category_name")).outerjoin(Category, Task.category_id == Category.id).where(
+            Task.user_id == user_id, Task.is_completed == 1, (Task.date_time >= start_date) | (Task.date_time.is_(None))
+        )
+        completed = [{"text": t.text, "category": c or "Без категории"} for t, c in (await session.execute(comp_query)).all()]
+        
+        pend_query = select(Task, Category.name.label("category_name")).outerjoin(Category, Task.category_id == Category.id).where(
+            Task.user_id == user_id, Task.is_completed == 0
+        )
+        pending = [{"text": t.text, "category": c or "Без категории", "date_time": t.date_time, "priority": t.priority} for t, c in (await session.execute(pend_query)).all()]
+        
+    return {"completed": completed, "pending": pending, "period_days": days}
