@@ -99,7 +99,7 @@ async def api_ai_text(request: web.Request):
     text = data.get("text")
     if not text: return web.json_response({"error": "Text required"}, status=400)
     
-    from app.database.requests import get_user_timezone, get_user_categories, add_task_to_db, get_category_by_name
+    from app.database.requests import get_user_timezone, get_user_categories, add_task
     from app.services.ai_parser import parse_tasks_batch_with_ai
     from app.services.google_cal import add_event_to_google
     
@@ -112,10 +112,12 @@ async def api_ai_text(request: web.Request):
     for t in tasks:
         cat_id = None
         if t["category"]:
-            cat = await get_category_by_name(user_id, t["category"])
-            if cat: cat_id = cat.id
+            for c in categories:
+                if c["name"] == t["category"]:
+                    cat_id = c["id"]
+                    break
         g_id = add_event_to_google(t["task_text"], t["date_time"], t["end_time"], t["is_timeless"], user_tz)
-        await add_task_to_db(user_id, t["task_text"], cat_id, t["date_time"], 1 if t["is_timeless"] else 0, g_id, t["priority"])
+        await add_task(user_id, t["task_text"], cat_id, t["date_time"], 1 if t["is_timeless"] else 0, 0, None, t["end_time"], g_id, t["priority"])
     return web.json_response({"status": "ok"})
 
 @routes.post("/api/ai_voice")
@@ -134,7 +136,7 @@ async def api_ai_voice(request: web.Request):
             if not chunk: break
             f.write(chunk)
             
-    from app.database.requests import get_user_timezone, get_user_categories, add_task_to_db, get_category_by_name
+    from app.database.requests import get_user_timezone, get_user_categories, add_task
     from app.services.ai_parser import parse_voice_batch_with_ai
     from app.services.google_cal import add_event_to_google
     import os
@@ -149,10 +151,12 @@ async def api_ai_voice(request: web.Request):
     for t in tasks:
         cat_id = None
         if t["category"]:
-            cat = await get_category_by_name(user_id, t["category"])
-            if cat: cat_id = cat.id
+            for c in categories:
+                if c["name"] == t["category"]:
+                    cat_id = c["id"]
+                    break
         g_id = add_event_to_google(t["task_text"], t["date_time"], t["end_time"], t["is_timeless"], user_tz)
-        await add_task_to_db(user_id, t["task_text"], cat_id, t["date_time"], 1 if t["is_timeless"] else 0, g_id, t["priority"])
+        await add_task(user_id, t["task_text"], cat_id, t["date_time"], 1 if t["is_timeless"] else 0, 0, None, t["end_time"], g_id, t["priority"])
     return web.json_response({"status": "ok"})
 
 # Setup static frontend

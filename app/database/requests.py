@@ -2,7 +2,7 @@ from datetime import datetime, date, timedelta
 from sqlalchemy import select, update, delete
 from zoneinfo import ZoneInfo
 from app.database.engine import async_session
-from app.database.models import User, Category, Task
+from app.database.models import User, Category, Task, Habit, HabitLog
 from app.config import DEFAULT_TZ
 
 async def get_all_users():
