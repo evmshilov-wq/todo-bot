@@ -1,8 +1,9 @@
-from aiogram import Router, types, F
+from aiogram import Router, types
 from aiogram.filters import CommandStart, Command
-from aiogram.types import ReplyKeyboardRemove
+from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.types import WebAppInfo
 from app.database.requests import create_user_with_default_categories
-from app.keyboards.inline import get_main_dashboard
+from app.config import WEBHOOK_URL
 
 router = Router()
 
@@ -10,17 +11,15 @@ router = Router()
 @router.message(Command("menu"))
 async def cmd_start_and_menu(message: types.Message):
     await create_user_with_default_categories(message.from_user.id)
-    text, reply_markup = await get_main_dashboard(message.from_user.id, message.from_user.full_name)
-    await message.answer(text=text, parse_mode="Markdown", reply_markup=reply_markup)
-    cleaner = await message.answer("🧹", reply_markup=ReplyKeyboardRemove())
-    await cleaner.delete()
-
-@router.callback_query(F.data == "menu_home")
-async def process_menu_home(callback_query: types.CallbackQuery):
-    text, reply_markup = await get_main_dashboard(callback_query.from_user.id, callback_query.from_user.full_name)
-    await callback_query.message.edit_text(text=text, parse_mode="Markdown", reply_markup=reply_markup)
-    await callback_query.answer()
-
-@router.callback_query(F.data == "ignore")
-async def process_ignore_callback(callback_query: types.CallbackQuery):
-    await callback_query.answer()
+    
+    builder = InlineKeyboardBuilder()
+    builder.row(types.InlineKeyboardButton(text="🚀 ОТКРЫТЬ ПРИЛОЖЕНИЕ", web_app=WebAppInfo(url=f"{WEBHOOK_URL}/app")))
+    
+    text = (
+        f"Привет, {message.from_user.full_name}! 👋\n\n"
+        f"Я твой ИИ-Ассистент по продуктивности.\n"
+        f"Весь функционал (календарь, привычки, ИИ) теперь находится внутри удобного мини-приложения.\n\n"
+        f"Нажми кнопку ниже, чтобы открыть его:"
+    )
+    
+    await message.answer(text=text, reply_markup=builder.as_markup())

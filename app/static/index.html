@@ -29,6 +29,22 @@
 
         <!-- Main Content Area -->
         <main id="main-content">
+            <!-- Calendar Tab -->
+            <section id="tab-calendar" class="tab-content">
+                <div class="section-header">
+                    <h3>Календарь</h3>
+                </div>
+                <div id="calendar-grid" class="calendar-grid">
+                    <!-- JS generated calendar -->
+                </div>
+                <div class="section-header" style="margin-top: 20px;">
+                    <h3 id="cal-date-title">Задачи</h3>
+                </div>
+                <div id="cal-tasks-list" class="items-list">
+                    <div class="loading" style="color: var(--text-muted);">Выберите дату</div>
+                </div>
+            </section>
+
             <!-- Tasks Tab -->
             <section id="tab-tasks" class="tab-content active">
                 <div class="section-header">
@@ -37,6 +53,12 @@
                 </div>
                 <div id="tasks-list" class="items-list">
                     <div class="loading">Загрузка задач...</div>
+                </div>
+                <div class="section-header" style="margin-top: 24px;">
+                    <h3>Бэклог (Без даты)</h3>
+                </div>
+                <div id="nodate-tasks-list" class="items-list">
+                    <div class="loading">Загрузка...</div>
                 </div>
             </section>
 
@@ -66,23 +88,50 @@
                         </div>
                     </div>
                     <div id="ai-status" class="ai-status-text"></div>
+                    <button class="glass-btn" style="margin-top:20px; font-size:12px; opacity:0.8;" onclick="showManualTaskModal()">+ Добавить вручную</button>
+                </div>
+            </section>
+
+            <!-- Analytics Tab -->
+            <section id="tab-analytics" class="tab-content">
+                <div class="section-header">
+                    <h3>Аналитика & Категории</h3>
+                </div>
+                <div class="categories-panel glass-panel" style="margin-bottom: 20px; padding: 16px; border-radius: 16px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                        <h4>Мои Категории</h4>
+                        <button class="icon-btn" onclick="showAddCategoryModal()" style="font-size:16px;">➕</button>
+                    </div>
+                    <div id="categories-list" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+                </div>
+                <div class="analytics-panel glass-panel" style="padding: 16px; border-radius: 16px;">
+                    <h4>Отчет ИИ за 7 дней</h4>
+                    <div id="analytics-digest" style="margin-top:12px; font-size:14px; color:var(--text-muted); line-height:1.5;">Загрузка...</div>
                 </div>
             </section>
         </main>
 
         <!-- Bottom Navigation -->
         <nav class="bottom-nav glass-nav">
+            <button class="nav-item" data-target="tab-calendar">
+                <span class="nav-icon">🗓</span>
+                <span class="nav-label">Календарь</span>
+            </button>
             <button class="nav-item active" data-target="tab-tasks">
                 <span class="nav-icon">📅</span>
                 <span class="nav-label">Задачи</span>
+            </button>
+            <button class="nav-item" data-target="tab-ai">
+                <span class="nav-icon">✨</span>
+                <span class="nav-label">ИИ</span>
             </button>
             <button class="nav-item" data-target="tab-habits">
                 <span class="nav-icon">🔥</span>
                 <span class="nav-label">Привычки</span>
             </button>
-            <button class="nav-item" data-target="tab-ai">
-                <span class="nav-icon">✨</span>
-                <span class="nav-label">Ассистент</span>
+            <button class="nav-item" data-target="tab-analytics">
+                <span class="nav-icon">📊</span>
+                <span class="nav-label">Ещё</span>
             </button>
         </nav>
     </div>
@@ -93,8 +142,53 @@
             <h3>Новая привычка</h3>
             <input type="text" id="new-habit-name" placeholder="Например: Выпить стакан воды" class="glass-input">
             <div class="modal-actions">
-                <button class="glass-btn" onclick="hideAddHabitModal()">Отмена</button>
+                <button class="glass-btn" onclick="hideModal('add-habit-modal')">Отмена</button>
                 <button class="glass-btn primary" onclick="submitNewHabit()">Добавить</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="snooze-modal" class="modal-overlay hidden">
+        <div class="modal-content glass-panel">
+            <h3>Перенести задачу</h3>
+            <input type="date" id="snooze-date" class="glass-input">
+            <div class="modal-actions">
+                <button class="glass-btn" onclick="hideModal('snooze-modal')">Отмена</button>
+                <button class="glass-btn primary" onclick="submitSnooze()">Перенести</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="edit-task-modal" class="modal-overlay hidden">
+        <div class="modal-content glass-panel">
+            <h3>Изменить задачу</h3>
+            <textarea id="edit-task-text" class="glass-input" style="height:80px;"></textarea>
+            <div class="modal-actions">
+                <button class="glass-btn" onclick="hideModal('edit-task-modal')">Отмена</button>
+                <button class="glass-btn primary" onclick="submitEditTask()">Сохранить</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="manual-task-modal" class="modal-overlay hidden">
+        <div class="modal-content glass-panel">
+            <h3>Новая задача</h3>
+            <input type="text" id="manual-task-text" placeholder="Текст задачи" class="glass-input">
+            <input type="date" id="manual-task-date" class="glass-input">
+            <div class="modal-actions">
+                <button class="glass-btn" onclick="hideModal('manual-task-modal')">Отмена</button>
+                <button class="glass-btn primary" onclick="submitManualTask()">Создать</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="add-cat-modal" class="modal-overlay hidden">
+        <div class="modal-content glass-panel">
+            <h3>Новая категория</h3>
+            <input type="text" id="new-cat-name" placeholder="Например: 🚗 Авто" class="glass-input">
+            <div class="modal-actions">
+                <button class="glass-btn" onclick="hideModal('add-cat-modal')">Отмена</button>
+                <button class="glass-btn primary" onclick="submitNewCategory()">Добавить</button>
             </div>
         </div>
     </div>

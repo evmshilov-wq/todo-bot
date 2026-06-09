@@ -49,8 +49,99 @@ async def api_me(request: web.Request):
 async def api_get_tasks(request: web.Request):
     user_id = get_user_id(request)
     if not user_id: return web.json_response({"error": "Unauthorized"}, status=401)
-    tasks = await get_tasks_for_today(user_id)
+    date_str = request.query.get("date")
+    from app.database.requests import get_tasks_for_today, get_tasks_for_date
+    if date_str:
+        target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+        tasks = await get_tasks_for_date(user_id, target_date)
+    else:
+        tasks = await get_tasks_for_today(user_id)
     return web.json_response({"tasks": tasks})
+
+@routes.get("/api/tasks/nodate")
+async def api_get_tasks_nodate(request: web.Request):
+    user_id = get_user_id(request)
+    if not user_id: return web.json_response({"error": "Unauthorized"}, status=401)
+    from app.database.requests import get_tasks_without_date
+    tasks = await get_tasks_without_date(user_id)
+    return web.json_response({"tasks": tasks})
+
+@routes.post("/api/tasks")
+async def api_create_task(request: web.Request):
+    user_id = get_user_id(request)
+    if not user_id: return web.json_response({"error": "Unauthorized"}, status=401)
+    data = await request.json()
+    from app.database.requests import add_task
+    await add_task(user_id, data["text"], data.get("category_id"), data.get("date_time"), data.get("is_timeless", 1), 0, None, None, None, data.get("priority", "B"))
+    return web.json_response({"status": "ok"})
+
+@routes.put("/api/tasks/{task_id}")
+async def api_update_task(request: web.Request):
+    user_id = get_user_id(request)
+    if not user_id: return web.json_response({"error": "Unauthorized"}, status=401)
+    task_id = int(request.match_info["task_id"])
+    data = await request.json()
+    from app.database.requests import update_task_text_db, update_task_datetime_db
+    if "text" in data:
+        await update_task_text_db(task_id, data["text"])
+    if "date_time" in data:
+        await update_task_datetime_db(task_id, data["date_time"], data.get("is_timeless", 1), data.get("google_event_id"))
+    return web.json_response({"status": "ok"})
+
+@routes.delete("/api/tasks/{task_id}")
+async def api_delete_task(request: web.Request):
+    user_id = get_user_id(request)
+    if not user_id: return web.json_response({"error": "Unauthorized"}, status=401)
+    task_id = int(request.match_info["task_id"])
+    from app.database.requests import delete_task_db
+    await delete_task_db(task_id)
+    return web.json_response({"status": "ok"})
+
+@routes.get("/api/categories")
+async def api_get_categories(request: web.Request):
+    user_id = get_user_id(request)
+    if not user_id: return web.json_response({"error": "Unauthorized"}, status=401)
+    from app.database.requests import get_user_categories
+    categories = await get_user_categories(user_id)
+    return web.json_response({"categories": categories})
+
+@routes.get("/api/categories/{category_id}/tasks")
+async def api_get_category_tasks(request: web.Request):
+    user_id = get_user_id(request)
+    if not user_id: return web.json_response({"error": "Unauthorized"}, status=401)
+    category_id = int(request.match_info["category_id"])
+    from app.database.requests import get_tasks_by_category
+    tasks = await get_tasks_by_category(user_id, category_id)
+    return web.json_response({"tasks": tasks})
+
+@routes.post("/api/categories")
+async def api_add_category(request: web.Request):
+    user_id = get_user_id(request)
+    if not user_id: return web.json_response({"error": "Unauthorized"}, status=401)
+    data = await request.json()
+    from app.database.requests import add_category_db
+    await add_category_db(user_id, data["name"])
+    return web.json_response({"status": "ok"})
+
+@routes.delete("/api/categories/{category_id}")
+async def api_delete_category(request: web.Request):
+    user_id = get_user_id(request)
+    if not user_id: return web.json_response({"error": "Unauthorized"}, status=401)
+    category_id = int(request.match_info["category_id"])
+    from app.database.requests import delete_category_db
+    await delete_category_db(category_id)
+    return web.json_response({"status": "ok"})
+
+@routes.get("/api/analytics")
+async def api_get_analytics(request: web.Request):
+    user_id = get_user_id(request)
+    if not user_id: return web.json_response({"error": "Unauthorized"}, status=401)
+    days = int(request.query.get("days", 7))
+    from app.database.requests import get_stats_for_digest
+    from app.services.ai_parser import generate_ai_digest
+    stats = await get_stats_for_digest(user_id, days)
+    digest = await generate_ai_digest(stats, "Пользователь")
+    return web.json_response({"stats": stats, "digest": digest})
 
 @routes.post("/api/tasks/{task_id}/complete")
 async def api_complete_task(request: web.Request):
