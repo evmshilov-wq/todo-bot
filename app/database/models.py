@@ -50,3 +50,18 @@ class Task(Base):
     end_time: Mapped[str] = mapped_column(String, nullable=True)
     google_event_id: Mapped[str] = mapped_column(String, nullable=True)
     priority: Mapped[str] = mapped_column(String, default="B")
+
+class ChatMessage(Base):
+    __tablename__ = 'chat_messages'
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(BigInteger)
+    role: Mapped[str] = mapped_column(String) # 'user' or 'assistant'
+    text: Mapped[str] = mapped_column(String)
+    created_at: Mapped[str] = mapped_column(String) # ISO 8601 string
+
+class Memory(Base):
+    __tablename__ = 'memories'
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(BigInteger)
+    fact: Mapped[str] = mapped_column(String)
+    created_at: Mapped[str] = mapped_column(String)

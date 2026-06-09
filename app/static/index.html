@@ -75,44 +75,45 @@
                 </div>
             </section>
 
-            <!-- AI Tab -->
+            <!-- AI Chat Tab -->
             <section id="tab-ai" class="tab-content">
-                <div class="ai-container">
-                    <div class="ai-avatar"><i data-lucide="bot" style="width: 72px; height: 72px;"></i></div>
-                    <h3>ИИ Ассистент</h3>
-                    <p class="ai-subtitle">Отправь мне текст или наговори голосом, и я сам распланирую это!</p>
-                    
-                    <div class="ai-input-wrapper">
-                        <textarea id="ai-text-input" placeholder="Например: Завтра в 15:00 сходить в зал..."></textarea>
-                        <div class="ai-actions">
-                            <button id="btn-voice" class="glass-btn pulse-anim"><i data-lucide="mic" style="margin-bottom:-4px"></i> Голос</button>
-                            <button id="btn-send" class="glass-btn primary"><i data-lucide="send" style="margin-bottom:-4px"></i> Отправить</button>
-                        </div>
+                <div class="chat-header section-header">
+                    <h3>Мой Второй Мозг</h3>
+                </div>
+                <div id="chat-messages" class="chat-messages-container">
+                    <div class="loading" style="color:var(--text-muted); text-align:center; padding-top:20px;">Загрузка диалога...</div>
+                </div>
+                <div id="ai-status" class="ai-status-text"></div>
+                <div class="chat-input-area glass-panel">
+                    <textarea id="ai-text-input" placeholder="Напиши мысли или дела..."></textarea>
+                    <div class="chat-actions">
+                        <button id="btn-voice" class="icon-btn" style="color: var(--text-main);"><i data-lucide="mic"></i></button>
+                        <button id="btn-send" class="icon-btn" style="color: var(--primary);"><i data-lucide="send"></i></button>
                     </div>
-                    <div id="ai-status" class="ai-status-text"></div>
-                    <button class="glass-btn" style="margin-top:20px; font-size:12px; opacity:0.8;" onclick="showManualTaskModal()"><i data-lucide="plus" style="width:14px; height:14px; margin-bottom:-2px;"></i> Добавить вручную</button>
                 </div>
             </section>
 
-            <!-- Analytics Tab -->
+            <!-- Memories & Analytics Tab -->
             <section id="tab-analytics" class="tab-content">
                 <div class="section-header">
-                    <h3>Настройки & Аналитика</h3>
+                    <h3>Карта Памяти</h3>
                 </div>
-                <div class="categories-panel glass-panel" style="margin-bottom: 20px; padding: 16px; border-radius: 24px;">
+                <div class="glass-panel" style="padding: 16px; border-radius: 24px; margin-bottom: 24px;">
+                    <p style="font-size:12px; color:var(--text-muted); margin-bottom:16px;">Факты о тебе, которые я учитываю при ответах. Ты можешь просить меня удалить или добавить новые через чат.</p>
+                    <div id="memories-list" style="display:flex; flex-direction:column; gap:8px;">
+                        <div class="loading" style="font-size:13px; color:var(--text-muted);">Загрузка памяти...</div>
+                    </div>
+                </div>
+
+                <div class="section-header">
+                    <h3>Настройки</h3>
+                </div>
+                <div class="categories-panel glass-panel" style="padding: 16px; border-radius: 24px;">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                        <h4>Мои Категории</h4>
+                        <h4>Категории задач</h4>
                         <button class="icon-btn" onclick="showAddCategoryModal()"><i data-lucide="plus"></i></button>
                     </div>
                     <div id="categories-list" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
-                </div>
-                <div class="analytics-panel glass-panel" style="padding: 16px; border-radius: 24px;">
-                    <h4 style="margin-bottom: 12px;">Отчет продуктивности</h4>
-                    <div style="display:flex; gap:12px; margin-bottom: 16px;">
-                        <button class="glass-btn" style="padding: 10px; font-size: 13px;" onclick="generateReport(1)">За сегодня</button>
-                        <button class="glass-btn primary" style="padding: 10px; font-size: 13px;" onclick="generateReport(7)">За неделю</button>
-                    </div>
-                    <div id="analytics-digest" style="font-size:14px; color:var(--text-muted); line-height:1.5;">Нажми кнопку, чтобы ИИ проанализировал твои задачи.</div>
                 </div>
             </section>
         </main>

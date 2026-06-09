@@ -29,6 +29,10 @@ const els = {
     btnSend: document.getElementById('btn-send'),
     btnVoice: document.getElementById('btn-voice'),
     
+
+    // Chat & Memories
+    chatMessages: document.getElementById('chat-messages'),
+    memoriesList: document.getElementById('memories-list'),
     // Calendar
     calendarGrid: document.getElementById('calendar-grid'),
     calTasksList: document.getElementById('cal-tasks-list'),
@@ -79,6 +83,8 @@ async function initApp() {
     await fetchStats();
     await fetchTasks();
     await fetchNoDateTasks();
+    await fetchChat();
+    await fetchMemories();
     await fetchHabits();
     await fetchCategories();
     
@@ -94,6 +100,55 @@ function renderIcons() {
 }
 
 // === DATA FETCHING ===
+
+async function fetchChat() {
+    try {
+        const res = await fetch('/api/chat', { headers });
+        if (!res.ok) return;
+        const data = await res.json();
+        els.chatMessages.innerHTML = '';
+        if (data.messages.length === 0) {
+            els.chatMessages.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding-top:20px;">Напиши мне о своих планах или переживаниях...</div>';
+            return;
+        }
+        data.messages.forEach(m => appendChatMessage(m.role, m.text));
+        scrollToBottom();
+    } catch(e) { console.error(e); }
+}
+
+async function fetchMemories() {
+    try {
+        const res = await fetch('/api/memories', { headers });
+        if (!res.ok) return;
+        const data = await res.json();
+        els.memoriesList.innerHTML = '';
+        if (data.memories.length === 0) {
+            els.memoriesList.innerHTML = '<div style="color:var(--text-muted); font-size:13px;">База знаний пуста.</div>';
+            return;
+        }
+        data.memories.forEach(m => {
+            const div = document.createElement('div');
+            div.className = 'memory-card';
+            div.innerText = m.fact;
+            els.memoriesList.appendChild(div);
+        });
+    } catch(e) { console.error(e); }
+}
+
+function appendChatMessage(role, text) {
+    if (els.chatMessages.querySelector('.loading')) {
+        els.chatMessages.innerHTML = '';
+    }
+    const div = document.createElement('div');
+    div.className = `chat-msg ${role}`;
+    div.innerText = text;
+    els.chatMessages.appendChild(div);
+}
+
+function scrollToBottom() {
+    els.chatMessages.scrollTop = els.chatMessages.scrollHeight;
+}
+
 
 async function fetchStats() {
     try {
@@ -434,20 +489,34 @@ async function submitManualTask() {
 
 // === AI & VOICE ===
 
+
 function setupAI() {
     els.btnSend.onclick = async () => {
         const text = els.aiInput.value.trim();
         if (!text) return;
-        els.aiStatus.innerHTML = '<i data-lucide="loader" class="pulse-anim" style="width:16px;height:16px;margin-bottom:-3px;"></i> Думаю...';
-        renderIcons();
+        
+        appendChatMessage('user', text);
         els.aiInput.value = '';
+        scrollToBottom();
+        
+        els.aiStatus.innerHTML = '<i data-lucide="loader" class="pulse-anim" style="width:16px;height:16px;margin-bottom:-3px;"></i> ИИ думает...';
+        renderIcons();
+        els.aiStatus.style.display = 'block';
+        
         try {
             const res = await fetch('/api/ai_text', { method: 'POST', headers, body: JSON.stringify({ text }) });
             if (res.ok) {
-                els.aiStatus.innerHTML = '<i data-lucide="check" style="width:16px;height:16px;margin-bottom:-3px;"></i> Готово!';
-                renderIcons();
+                const data = await res.json();
+                appendChatMessage('assistant', data.reply);
+                scrollToBottom();
+                els.aiStatus.style.display = 'none';
                 tg.HapticFeedback.notificationOccurred('success');
-                setTimeout(() => { els.aiStatus.innerText = ''; fetchTasks(); fetchNoDateTasks(); }, 2000);
+                
+                if (data.mutations.tasks.length > 0 || data.mutations.memories.length > 0) {
+                    fetchTasks(); 
+                    fetchNoDateTasks();
+                    fetchMemories();
+                }
             } else { els.aiStatus.innerText = '❌ Ошибка.'; }
         } catch(e) { els.aiStatus.innerText = '❌ Ошибка сети.'; }
     };
@@ -461,12 +530,14 @@ function setupAI() {
             mediaRecorder.onstop = sendVoice;
             mediaRecorder.start();
             isRecording = true;
-            els.btnVoice.innerHTML = '<i data-lucide="square" style="margin-bottom:-4px"></i> Стоп';
+            els.btnVoice.innerHTML = '<i data-lucide="square" style="color:red;"></i>';
             renderIcons();
             els.btnVoice.classList.add('pulse-anim');
-            els.aiStatus.innerHTML = '<i data-lucide="mic" class="pulse-anim" style="width:16px;height:16px;margin-bottom:-3px;"></i> Запись...';
+            els.aiStatus.style.display = 'block';
+            els.aiStatus.innerHTML = '<i data-lucide="mic" class="pulse-anim" style="width:16px;height:16px;margin-bottom:-3px;"></i> Слушаю...';
             renderIcons();
         } catch (e) {
+            els.aiStatus.style.display = 'block';
             els.aiStatus.innerText = '❌ Нет доступа к микрофону.';
         }
     };
@@ -478,7 +549,7 @@ function stopRecording() {
         mediaRecorder.stream.getTracks().forEach(t => t.stop());
     }
     isRecording = false;
-    els.btnVoice.innerHTML = '<i data-lucide="mic" style="margin-bottom:-4px"></i> Голос';
+    els.btnVoice.innerHTML = '<i data-lucide="mic"></i>';
     renderIcons();
     els.btnVoice.classList.remove('pulse-anim');
     els.aiStatus.innerHTML = '<i data-lucide="loader" class="pulse-anim" style="width:16px;height:16px;margin-bottom:-3px;"></i> Отправка...';
@@ -486,6 +557,8 @@ function stopRecording() {
 }
 
 async function sendVoice() {
+    appendChatMessage('user', '[Голосовое сообщение]');
+    scrollToBottom();
     const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
     audioChunks = [];
     const formData = new FormData();
@@ -497,14 +570,20 @@ async function sendVoice() {
             body: formData
         });
         if (res.ok) {
-            els.aiStatus.innerHTML = '<i data-lucide="check" style="width:16px;height:16px;margin-bottom:-3px;"></i> Готово!';
-            renderIcons();
+            const data = await res.json();
+            appendChatMessage('assistant', data.reply);
+            scrollToBottom();
+            els.aiStatus.style.display = 'none';
             tg.HapticFeedback.notificationOccurred('success');
-            setTimeout(() => { els.aiStatus.innerText = ''; fetchTasks(); fetchNoDateTasks(); }, 2000);
+            
+            if (data.mutations.tasks.length > 0 || data.mutations.memories.length > 0) {
+                fetchTasks(); 
+                fetchNoDateTasks();
+                fetchMemories();
+            }
         } else { els.aiStatus.innerText = '❌ Ошибка.'; }
     } catch(e) { els.aiStatus.innerText = '❌ Ошибка сети.'; }
 }
-
 // === TABS ===
 function setupTabs() {
     const navItems = document.querySelectorAll('.nav-item');

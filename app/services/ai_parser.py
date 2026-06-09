@@ -12,18 +12,27 @@ from app.config import GEMINI_API_KEY, AI_MODEL
 
 client = genai.Client(api_key=GEMINI_API_KEY)
 
-class TaskModel(BaseModel):
-    task_text: str = Field(description="Суть задачи с заглавной буквы")
-    category: Optional[str] = Field(None, description="Категория строго из списка доступных или null")
-    date_time: Optional[str] = Field(None, description="Дата и время в формате YYYY-MM-DD HH:MM или null")
-    end_time: Optional[str] = Field(None, description="Дата и время окончания в формате YYYY-MM-DD HH:MM или null")
-    is_timeless: bool = Field(description="true, если указана только дата без конкретного часа/минут. false, если есть точное время")
-    priority: Literal["A", "B", "C", "D"] = Field(description="Приоритет: 'A' (критично/дедлайн), 'B' (важно/учеба), 'C' (рутина), 'D' (бэклог)")
+class TaskActionModel(BaseModel):
+    action: Literal["add", "edit", "delete"] = Field(description="Действие: add, edit или delete")
+    task_id: Optional[int] = Field(None, description="ID задачи (обязательно для edit и delete)")
+    task_text: Optional[str] = Field(None, description="Суть задачи (обязательно для add и edit)")
+    category: Optional[str] = Field(None, description="Категория строго из списка доступных")
+    date_time: Optional[str] = Field(None, description="Дата/время (YYYY-MM-DD HH:MM)")
+    end_time: Optional[str] = Field(None, description="Окончание (YYYY-MM-DD HH:MM)")
+    is_timeless: Optional[bool] = Field(True, description="true если без точного времени")
+    priority: Optional[Literal["A", "B", "C", "D"]] = Field("B", description="Приоритет")
 
-class TaskListModel(BaseModel):
-    tasks: List[TaskModel] = Field(description="Список распознанных задач")
+class MemoryActionModel(BaseModel):
+    action: Literal["add", "delete"] = Field(description="Действие: add или delete")
+    memory_id: Optional[int] = Field(None, description="ID факта памяти (только для delete)")
+    fact_text: Optional[str] = Field(None, description="Текст факта о пользователе (для add)")
 
-def get_ai_system_prompt(available_categories: list, user_tz: str) -> str:
+class AIChatResponseModel(BaseModel):
+    reply: str = Field(description="Эмпатичный и естественный ответ пользователю. Без роботизированных фраз.")
+    tasks: List[TaskActionModel] = Field(default_factory=list, description="Действия с задачами, если требуются")
+    memories: List[MemoryActionModel] = Field(default_factory=list, description="Новые факты для запоминания или удаления")
+
+def get_ai_system_prompt(available_categories: list, user_tz: str, current_tasks: list, memories: list) -> str:
     days_ru = {"Monday": "Понедельник", "Tuesday": "Вторник", "Wednesday": "Среда", "Thursday": "Четверг", "Friday": "Пятница", "Saturday": "Суббота", "Sunday": "Воскресенье"}
     try:
         now_user = datetime.now(ZoneInfo(user_tz))
@@ -38,74 +47,83 @@ def get_ai_system_prompt(available_categories: list, user_tz: str) -> str:
         
     categories_str = ", ".join(available_categories)
     
-    return f"""Ты — профессиональный ИИ-помощник по планированию времени. 
-ТЕКУЩЕЕ ВРЕМЯ И ДАТА ПОЛЬЗОВАТЕЛЯ: {current_date}. Часовой пояс: {user_tz}. 
-Доступные папки/категории пользователя: [{categories_str}].
+    tasks_str = "\n".join([f"ID: {t['id']} | {t['text']} | {t.get('date_time', 'Без даты')} | Пр: {t['priority']}" for t in current_tasks]) if current_tasks else "Нет текущих задач."
+    memories_str = "\n".join([f"ID: {m['id']} | {m['fact']}" for m in memories]) if memories else "База знаний пуста."
+    
+    return f"""Ты — ИИ-Ассистент, Психолог и Менеджер (Second Brain). Твоя задача — общаться с пользователем как эмпатичный, живой человек, и одновременно невидимо управлять его делами и базой знаний.
 
-Твоя цель — аккуратно разобрать входящий текст и определить приоритет по буквам:
-- 'A': Очень важные дела, жесткие дедлайны, критичные созвоны.
-- 'B': Важные дела без горящего дедлайна (учеба, лабы, личные проекты).
-- 'C': Срочная рутина (купить продукты, убраться, ответить на письмо).
-- 'D': Несрочный бэклог (посмотреть фильм, когда-нибудь почитать).
+ТЕКУЩЕЕ ВРЕМЯ И ДАТА: {current_date}. Часовой пояс: {user_tz}.
+Доступные категории задач: [{categories_str}].
 
-Если пользователь говорит "завтра", прибавь 1 день к текущей дате {now_user.strftime('%Y-%m-%d')}.
-Если указано конкретное время (например, "в 14:00"), то параметр is_timeless ОБЯЗАТЕЛЬНО должен быть false, а в date_time должно быть записано корректное время."""
+ТЕКУЩИЕ ЗАДАЧИ ПОЛЬЗОВАТЕЛЯ:
+{tasks_str}
 
-async def parse_tasks_batch_with_ai(user_text: str, available_categories: list, user_tz: str) -> list:
-    prompt = get_ai_system_prompt(available_categories, user_tz) + f'\n\nТекст пользователя: "{user_text}"'
+ФАКТЫ О ПОЛЬЗОВАТЕЛЕ (КАРТА ПАМЯТИ):
+{memories_str}
+
+ИНСТРУКЦИИ ДЛЯ ОБЩЕНИЯ (поле reply):
+1. Общайся естественно, тепло и профессионально. НИКОГДА не говори "Я искусственный интеллект", "Как языковая модель" или "Давай я запишу это". Просто веди диалог.
+2. Если пользователь жалуется на усталость или стресс — прояви эмпатию, задай наводящий вопрос, предложи помощь. Отложи планирование.
+3. Если пользователь просто диктует задачи — ответь коротко ("Записал!", "Готово, добавил в план").
+4. Если пользователь просит удалить задачу/факт — сделай это (через JSON массивы) и подтверди словами.
+
+ИНСТРУКЦИИ ДЛЯ JSON (управление данными):
+- Если в речи пользователя есть новые дела, добавь их в массив `tasks` (action="add").
+- Если он просит изменить дедлайн существующей задачи, найди ее ID в списке ТЕКУЩИЕ ЗАДАЧИ и добавь в `tasks` (action="edit").
+- Если просит удалить задачу, добавь в `tasks` (action="delete", task_id=ID).
+- Если ты узнаешь новый долгосрочный факт о пользователе (цели, страхи, предпочтения, триггеры), добавь его в `memories` (action="add").
+- Приоритеты задач: A (критично), B (важно), C (рутина), D (бэклог/несрочно).
+"""
+
+def format_history_for_gemini(chat_history: list) -> list:
+    contents = []
+    for msg in chat_history:
+        role = "user" if msg["role"] == "user" else "model"
+        contents.append(genai_types.Content(role=role, parts=[genai_types.Part.from_text(text=msg["text"])]))
+    return contents
+
+async def process_chat_message(user_text: str, chat_history: list, current_tasks: list, memories: list, available_categories: list, user_tz: str) -> dict:
+    system_prompt = get_ai_system_prompt(available_categories, user_tz, current_tasks, memories)
+    contents = format_history_for_gemini(chat_history)
+    contents.append(genai_types.Content(role="user", parts=[genai_types.Part.from_text(text=user_text)]))
+    
     try:
         response = client.models.generate_content(
             model=AI_MODEL, 
-            contents=prompt,
+            contents=contents,
             config=genai_types.GenerateContentConfig(
+                system_instruction=system_prompt,
                 response_mime_type='application/json', 
-                response_schema=TaskListModel
+                response_schema=AIChatResponseModel
             )
         )
-        result = json.loads(response.text.strip())
-        return result.get("tasks", [])
+        return json.loads(response.text.strip())
     except Exception as e:
-        logging.error(f"Ошибка ИИ-парсинга текста: {e}")
-        if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e): return "LIMIT_REACHED"
-        return [{"task_text": user_text, "category": None, "date_time": None, "end_time": None, "is_timeless": True, "priority": "B"}]
+        logging.error(f"Ошибка AI Chat: {e}")
+        return {"reply": "Прости, я немного задумался и потерял мысль (ошибка сети). Повтори, пожалуйста?", "tasks": [], "memories": []}
 
-async def parse_recurring_task_with_ai(user_text: str, available_categories: list, user_tz: str) -> list:
-    prompt = f"Модуль циклов. Категории: {available_categories}. Разбери задачу."
-    try:
-        response = client.models.generate_content(
-            model=AI_MODEL, 
-            contents=prompt,
-            config=genai_types.GenerateContentConfig(
-                response_mime_type='application/json', 
-                response_schema=TaskListModel
-            )
-        )
-        result = json.loads(response.text.strip())
-        return result.get("tasks", [])
-    except Exception as e:
-        logging.error(f"Ошибка ИИ-парсинга циклов: {e}")
-        if "429" in str(e): return "LIMIT_REACHED"
-        return [{"task_text": user_text, "category": None, "date_time": None, "end_time": None, "is_timeless": True, "priority": "B"}]
-
-async def parse_voice_batch_with_ai(file_path: str, available_categories: list, user_tz: str) -> list:
-    system_prompt = get_ai_system_prompt(available_categories, user_tz)
+async def process_chat_voice(file_path: str, chat_history: list, current_tasks: list, memories: list, available_categories: list, user_tz: str) -> dict:
+    system_prompt = get_ai_system_prompt(available_categories, user_tz, current_tasks, memories)
+    contents = format_history_for_gemini(chat_history)
+    
     try:
         uploaded_file = client.files.upload(file=file_path)
+        contents.append(genai_types.Content(role="user", parts=[genai_types.Part.from_uri(file_uri=uploaded_file.uri, mime_type=uploaded_file.mime_type)]))
+        
         response = client.models.generate_content(
             model=AI_MODEL, 
-            contents=[uploaded_file, system_prompt],
+            contents=contents,
             config=genai_types.GenerateContentConfig(
+                system_instruction=system_prompt,
                 response_mime_type='application/json', 
-                response_schema=TaskListModel
+                response_schema=AIChatResponseModel
             )
         )
         client.files.delete(name=uploaded_file.name)
-        result = json.loads(response.text.strip())
-        return result.get("tasks", [])
+        return json.loads(response.text.strip())
     except Exception as e:
-        logging.error(f"Ошибка ИИ-парсинга голоса: {e}")
-        if "429" in str(e): return "LIMIT_REACHED"
-        return []
+        logging.error(f"Ошибка AI Voice Chat: {e}")
+        return {"reply": "Прости, я не смог разобрать голосовое. Можешь повторить?", "tasks": [], "memories": []}
 
 async def generate_ai_digest(stats: dict, user_name: str) -> str:
     completed_str = "\n".join([f"- {t['text']} [{t['category']}]" for t in stats["completed"]]) or "Нет выполненных задач"

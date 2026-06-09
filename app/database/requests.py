@@ -195,3 +195,36 @@ async def complete_habit(habit_id: int, target_date: date):
             return True
         return False
 
+from app.database.models import ChatMessage, Memory
+
+async def get_chat_history(user_id: int, limit: int = 50):
+    async with async_session() as session:
+        query = select(ChatMessage).where(ChatMessage.user_id == user_id).order_by(ChatMessage.id.desc()).limit(limit)
+        result = await session.scalars(query)
+        # Reverse to get chronological order
+        messages = [{"role": msg.role, "text": msg.text} for msg in result.all()]
+        messages.reverse()
+        return messages
+
+async def add_chat_message(user_id: int, role: str, text: str):
+    created_at = datetime.now().isoformat()
+    async with async_session() as session:
+        session.add(ChatMessage(user_id=user_id, role=role, text=text, created_at=created_at))
+        await session.commit()
+
+async def get_memories(user_id: int):
+    async with async_session() as session:
+        query = select(Memory).where(Memory.user_id == user_id).order_by(Memory.id.asc())
+        result = await session.scalars(query)
+        return [{"id": m.id, "fact": m.fact, "created_at": m.created_at} for m in result.all()]
+
+async def add_memory(user_id: int, fact: str):
+    created_at = datetime.now().isoformat()
+    async with async_session() as session:
+        session.add(Memory(user_id=user_id, fact=fact, created_at=created_at))
+        await session.commit()
+
+async def delete_memory_db(memory_id: int):
+    async with async_session() as session:
+        await session.execute(delete(Memory).where(Memory.id == memory_id))
+        await session.commit()
