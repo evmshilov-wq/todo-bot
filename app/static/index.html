@@ -13,7 +13,7 @@
         <!-- Header with XP Bar -->
         <header class="glass-header">
             <div class="user-info">
-                <div class="avatar" id="user-avatar">👤</div>
+                <img class="avatar" id="user-avatar" src="" alt="" style="object-fit: cover;">
                 <div class="user-details">
                     <h2 id="user-name">Загрузка...</h2>
                     <p>Уровень <span id="user-level">1</span></p>
@@ -66,7 +66,7 @@
             <section id="tab-habits" class="tab-content">
                 <div class="section-header">
                     <h3>Трекер привычек</h3>
-                    <button class="icon-btn" onclick="showAddHabitModal()">➕</button>
+                    <button class="icon-btn" onclick="showAddHabitModal()"><i data-lucide="plus"></i></button>
                 </div>
                 <div id="habits-list" class="items-list">
                     <!-- Habits will be loaded here -->
@@ -76,37 +76,41 @@
             <!-- AI Tab -->
             <section id="tab-ai" class="tab-content">
                 <div class="ai-container">
-                    <div class="ai-avatar">🤖</div>
+                    <div class="ai-avatar"><i data-lucide="bot" style="width: 72px; height: 72px;"></i></div>
                     <h3>ИИ Ассистент</h3>
                     <p class="ai-subtitle">Отправь мне текст или наговори голосом, и я сам распланирую это!</p>
                     
                     <div class="ai-input-wrapper">
                         <textarea id="ai-text-input" placeholder="Например: Завтра в 15:00 сходить в зал..."></textarea>
                         <div class="ai-actions">
-                            <button id="btn-voice" class="glass-btn pulse-anim">🎙 Голос</button>
-                            <button id="btn-send" class="glass-btn primary">Отправить</button>
+                            <button id="btn-voice" class="glass-btn pulse-anim"><i data-lucide="mic" style="margin-bottom:-4px"></i> Голос</button>
+                            <button id="btn-send" class="glass-btn primary"><i data-lucide="send" style="margin-bottom:-4px"></i> Отправить</button>
                         </div>
                     </div>
                     <div id="ai-status" class="ai-status-text"></div>
-                    <button class="glass-btn" style="margin-top:20px; font-size:12px; opacity:0.8;" onclick="showManualTaskModal()">+ Добавить вручную</button>
+                    <button class="glass-btn" style="margin-top:20px; font-size:12px; opacity:0.8;" onclick="showManualTaskModal()"><i data-lucide="plus" style="width:14px; height:14px; margin-bottom:-2px;"></i> Добавить вручную</button>
                 </div>
             </section>
 
             <!-- Analytics Tab -->
             <section id="tab-analytics" class="tab-content">
                 <div class="section-header">
-                    <h3>Аналитика & Категории</h3>
+                    <h3>Настройки & Аналитика</h3>
                 </div>
-                <div class="categories-panel glass-panel" style="margin-bottom: 20px; padding: 16px; border-radius: 16px;">
+                <div class="categories-panel glass-panel" style="margin-bottom: 20px; padding: 16px; border-radius: 24px;">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
                         <h4>Мои Категории</h4>
-                        <button class="icon-btn" onclick="showAddCategoryModal()" style="font-size:16px;">➕</button>
+                        <button class="icon-btn" onclick="showAddCategoryModal()"><i data-lucide="plus"></i></button>
                     </div>
                     <div id="categories-list" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
                 </div>
-                <div class="analytics-panel glass-panel" style="padding: 16px; border-radius: 16px;">
-                    <h4>Отчет ИИ за 7 дней</h4>
-                    <div id="analytics-digest" style="margin-top:12px; font-size:14px; color:var(--text-muted); line-height:1.5;">Загрузка...</div>
+                <div class="analytics-panel glass-panel" style="padding: 16px; border-radius: 24px;">
+                    <h4 style="margin-bottom: 12px;">Отчет продуктивности</h4>
+                    <div style="display:flex; gap:12px; margin-bottom: 16px;">
+                        <button class="glass-btn" style="padding: 10px; font-size: 13px;" onclick="generateReport(1)">За сегодня</button>
+                        <button class="glass-btn primary" style="padding: 10px; font-size: 13px;" onclick="generateReport(7)">За неделю</button>
+                    </div>
+                    <div id="analytics-digest" style="font-size:14px; color:var(--text-muted); line-height:1.5;">Нажми кнопку, чтобы ИИ проанализировал твои задачи.</div>
                 </div>
             </section>
         </main>
@@ -114,23 +118,24 @@
         <!-- Bottom Navigation -->
         <nav class="bottom-nav glass-nav">
             <button class="nav-item" data-target="tab-calendar">
-                <span class="nav-icon">🗓</span>
+                <i data-lucide="calendar-days" class="nav-icon"></i>
                 <span class="nav-label">Календарь</span>
             </button>
             <button class="nav-item active" data-target="tab-tasks">
-                <span class="nav-icon">📅</span>
+                <i data-lucide="check-square" class="nav-icon"></i>
                 <span class="nav-label">Задачи</span>
             </button>
-            <button class="nav-item" data-target="tab-ai">
-                <span class="nav-icon">✨</span>
-                <span class="nav-label">ИИ</span>
+            <button class="nav-item ai-center-btn" data-target="tab-ai">
+                <div class="ai-circle">
+                    <i data-lucide="sparkles"></i>
+                </div>
             </button>
             <button class="nav-item" data-target="tab-habits">
-                <span class="nav-icon">🔥</span>
+                <i data-lucide="flame" class="nav-icon"></i>
                 <span class="nav-label">Привычки</span>
             </button>
             <button class="nav-item" data-target="tab-analytics">
-                <span class="nav-icon">📊</span>
+                <i data-lucide="layout-grid" class="nav-icon"></i>
                 <span class="nav-label">Ещё</span>
             </button>
         </nav>
@@ -193,6 +198,7 @@
         </div>
     </div>
 
+    <script src="https://unpkg.com/lucide@latest"></script>
     <script src="/static/app.js"></script>
 </body>
 </html>

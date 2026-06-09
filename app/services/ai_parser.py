@@ -110,7 +110,17 @@ async def parse_voice_batch_with_ai(file_path: str, available_categories: list, 
 async def generate_ai_digest(stats: dict, user_name: str) -> str:
     completed_str = "\n".join([f"- {t['text']} [{t['category']}]" for t in stats["completed"]]) or "Нет выполненных задач"
     pending_str = "\n".join([f"- [{t['priority']}] {t['text']} [{t['category']}]" for t in stats["pending"]]) or "Все задачи закрыты!"
-    prompt = f"Ты ИИ-коуч. Проанализируй продуктивность {user_name} за период {stats['period_days']} дней учитывая приоритеты (A - критично, D - низкий).\nВыполнено:\n{completed_str}\nОсталось:\n{pending_str}\nНапиши краткий отчет без символов разметки Markdown."
+    prompt = f"""Ты суровый, но мотивирующий ИИ-коуч. Проанализируй задачи {user_name} за период {stats['period_days']} дней.
+Выполнено:
+{completed_str}
+Осталось:
+{pending_str}
+
+Твоя задача — составить отчет в формате:
+1. Сухой, краткий список дел (сводка выполненного и оставшегося).
+2. На чем лучше сосредоточиться прямо сейчас (исходя из приоритетов A/B/C).
+3. Короткая мотивационная фраза в конце.
+Пиши без Markdown-разметки (без звездочек и решеток), просто чистый текст."""
     try:
         response = client.models.generate_content(model=AI_MODEL, contents=prompt)
         return response.text.strip().replace("*", "").replace("_", "").replace("#", "")

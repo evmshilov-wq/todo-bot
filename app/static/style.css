@@ -234,11 +234,30 @@ body::before {
     display: flex; flex-direction: column; align-items: center; gap: 6px;
     cursor: pointer; transition: all 0.3s;
     width: 60px;
+    position: relative;
 }
 .nav-item.active { color: var(--primary); transform: translateY(-4px); }
-.nav-icon { font-size: 22px; filter: grayscale(100%); transition: filter 0.3s; }
+.nav-icon { width: 22px; height: 22px; stroke-width: 2px; filter: grayscale(100%); transition: filter 0.3s; }
 .nav-item.active .nav-icon { filter: grayscale(0%); }
 .nav-label { font-size: 11px; font-weight: 600; }
+
+/* AI Center Button */
+.nav-item.ai-center-btn {
+    transform: translateY(-20px);
+}
+.nav-item.ai-center-btn .ai-circle {
+    width: 56px; height: 56px;
+    background: var(--primary);
+    color: #000;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 10px 20px rgba(255,255,255,0.2), inset 0 -2px 5px rgba(0,0,0,0.3);
+    border: 4px solid #111;
+    transition: all 0.3s;
+}
+.nav-item.ai-center-btn:active .ai-circle { transform: scale(0.9); }
+.nav-item.ai-center-btn.active .ai-circle { box-shadow: 0 0 25px rgba(255,255,255,0.4); }
+.nav-item.ai-center-btn svg { width: 24px; height: 24px; stroke-width: 2.5px; }
 
 /* Modals */
 .modal-overlay {

@@ -13,6 +13,7 @@ const els = {
     userLevel: document.getElementById('user-level'),
     userXp: document.getElementById('user-xp'),
     xpBarFill: document.getElementById('xp-bar-fill'),
+    userAvatar: document.getElementById('user-avatar'),
     
     // Tasks
     tasksList: document.getElementById('tasks-list'),
@@ -55,7 +56,15 @@ let editingTaskId = null;
 let snoozingTaskId = null;
 
 async function initApp() {
-    els.userName.innerText = tg.initDataUnsafe?.user?.first_name || 'Пользователь';
+    const user = tg.initDataUnsafe?.user;
+    els.userName.innerText = user?.first_name || 'Пользователь';
+    
+    if (user?.photo_url) {
+        els.userAvatar.src = user.photo_url;
+    } else {
+        els.userAvatar.style.display = 'none'; // Fallback logic
+    }
+
     setupTabs();
     setupAI();
     generateCalendar(selectedDate.getFullYear(), selectedDate.getMonth());
@@ -65,7 +74,8 @@ async function initApp() {
     await fetchNoDateTasks();
     await fetchHabits();
     await fetchCategories();
-    await fetchAnalytics();
+    
+    lucide.createIcons();
 }
 
 // === DATA FETCHING ===
@@ -115,13 +125,17 @@ async function fetchCategories() {
     } catch (e) { console.error(e); }
 }
 
-async function fetchAnalytics() {
+async function generateReport(days) {
+    els.analyticsDigest.innerHTML = '<i data-lucide="loader" class="pulse-anim" style="width:20px;height:20px;display:block;margin:0 auto;"></i><p style="text-align:center;margin-top:8px;">ИИ готовит отчет...</p>';
+    lucide.createIcons();
     try {
-        const res = await fetch('/api/analytics?days=7', { headers });
+        const res = await fetch(`/api/analytics?days=${days}`, { headers });
         if (!res.ok) return;
         const data = await res.json();
         els.analyticsDigest.innerText = data.digest;
-    } catch (e) { console.error(e); }
+    } catch (e) { 
+        els.analyticsDigest.innerText = '⚠️ Ошибка при генерации отчета.';
+    }
 }
 
 async function fetchTasksForDate(dateStr) {
@@ -143,10 +157,10 @@ function updateXPBar() {
 }
 
 function getPriorityColor(priority) {
-    if (priority === 'A') return '🔴';
-    if (priority === 'B') return '🟡';
-    if (priority === 'C') return '🔵';
-    return '⚪️';
+    if (priority === 'A') return '<span style="color:#ff4d4d; font-weight:bold;">A</span>';
+    if (priority === 'B') return '<span style="color:#facc15; font-weight:bold;">B</span>';
+    if (priority === 'C') return '<span style="color:#60a5fa; font-weight:bold;">C</span>';
+    return '<span style="color:#a3a3a3; font-weight:bold;">D</span>';
 }
 
 function renderTasksList(tasks, container, countEl) {
@@ -164,18 +178,19 @@ function renderTasksList(tasks, container, countEl) {
             <div class="item-content">
                 <div class="item-title">${t.text}</div>
                 <div class="item-meta">
-                    <span>${getPriorityColor(t.priority)} ${t.category || 'Без категории'}</span>
-                    ${t.date_time && !t.is_timeless ? `<span>⏰ ${t.date_time.slice(11, 16)}</span>` : ''}
+                    <span style="display:flex; align-items:center; gap:4px;">${getPriorityColor(t.priority)} ${t.category || 'Без категории'}</span>
+                    ${t.date_time && !t.is_timeless ? `<span style="display:flex; align-items:center; gap:4px;"><i data-lucide="clock" style="width:12px;height:12px;"></i> ${t.date_time.slice(11, 16)}</span>` : ''}
                 </div>
             </div>
             <div class="item-actions">
-                <button class="action-btn edit" onclick="openEditTask(${t.id}, \`${t.text.replace(/`/g, '\\`')}\`)">✏️</button>
-                <button class="action-btn snooze" onclick="openSnoozeTask(${t.id})">➡️</button>
-                <button class="action-btn delete" onclick="deleteTask(${t.id}, this)">🗑</button>
+                <button class="action-btn edit" onclick="openEditTask(${t.id}, \`${t.text.replace(/`/g, '\\`')}\`)"><i data-lucide="pencil" style="width:16px;height:16px;"></i></button>
+                <button class="action-btn snooze" onclick="openSnoozeTask(${t.id})"><i data-lucide="arrow-right-to-line" style="width:16px;height:16px;"></i></button>
+                <button class="action-btn delete" onclick="deleteTask(${t.id}, this)"><i data-lucide="trash-2" style="width:16px;height:16px;"></i></button>
             </div>
         `;
         container.appendChild(div);
     });
+    lucide.createIcons();
 }
 
 function renderHabits(habits) {
@@ -192,12 +207,13 @@ function renderHabits(habits) {
             <div class="item-content">
                 <div class="item-title">${h.name}</div>
                 <div class="item-meta">
-                    <span>🔥 <span class="streak">${h.current_streak}</span> дней подряд</span>
+                    <span style="display:flex; align-items:center; gap:4px;"><i data-lucide="flame" style="width:14px;height:14px;color:var(--primary);"></i> <span class="streak">${h.current_streak}</span> дней подряд</span>
                 </div>
             </div>
         `;
         els.habitsList.appendChild(div);
     });
+    lucide.createIcons();
 }
 
 function renderCategories(categories) {
@@ -207,10 +223,11 @@ function renderCategories(categories) {
         div.className = 'cat-tag';
         div.innerHTML = `
             ${c.name}
-            <span class="cat-delete" onclick="deleteCategory(${c.id})">❌</span>
+            <span class="cat-delete" onclick="deleteCategory(${c.id})"><i data-lucide="x" style="width:14px;height:14px;"></i></span>
         `;
         els.categoriesList.appendChild(div);
     });
+    lucide.createIcons();
 }
 
 function generateCalendar(year, month) {
@@ -238,7 +255,7 @@ function generateCalendar(year, month) {
         const el = document.createElement('div');
         el.className = 'cal-day';
         if (year === today.getFullYear() && month === today.getMonth() && d === today.getDate()) {
-            el.style.border = '2px solid var(--primary)';
+            el.style.border = '2px solid var(--glass-border)';
         }
         if (year === selectedDate.getFullYear() && month === selectedDate.getMonth() && d === selectedDate.getDate()) {
             el.classList.add('active');
@@ -406,12 +423,14 @@ function setupAI() {
     els.btnSend.onclick = async () => {
         const text = els.aiInput.value.trim();
         if (!text) return;
-        els.aiStatus.innerText = '⏳ Думаю...';
+        els.aiStatus.innerHTML = '<i data-lucide="loader" class="pulse-anim" style="width:16px;height:16px;margin-bottom:-3px;"></i> Думаю...';
+        lucide.createIcons();
         els.aiInput.value = '';
         try {
             const res = await fetch('/api/ai_text', { method: 'POST', headers, body: JSON.stringify({ text }) });
             if (res.ok) {
-                els.aiStatus.innerText = '✅ Готово!';
+                els.aiStatus.innerHTML = '<i data-lucide="check" style="width:16px;height:16px;margin-bottom:-3px;"></i> Готово!';
+                lucide.createIcons();
                 tg.HapticFeedback.notificationOccurred('success');
                 setTimeout(() => { els.aiStatus.innerText = ''; fetchTasks(); fetchNoDateTasks(); }, 2000);
             } else { els.aiStatus.innerText = '❌ Ошибка.'; }
@@ -427,9 +446,11 @@ function setupAI() {
             mediaRecorder.onstop = sendVoice;
             mediaRecorder.start();
             isRecording = true;
-            els.btnVoice.innerText = '🛑 Стоп';
+            els.btnVoice.innerHTML = '<i data-lucide="square" style="margin-bottom:-4px"></i> Стоп';
+            lucide.createIcons();
             els.btnVoice.classList.add('pulse-anim');
-            els.aiStatus.innerText = '🎙 Запись...';
+            els.aiStatus.innerHTML = '<i data-lucide="mic" class="pulse-anim" style="width:16px;height:16px;margin-bottom:-3px;"></i> Запись...';
+            lucide.createIcons();
         } catch (e) {
             els.aiStatus.innerText = '❌ Нет доступа к микрофону.';
         }
@@ -442,9 +463,11 @@ function stopRecording() {
         mediaRecorder.stream.getTracks().forEach(t => t.stop());
     }
     isRecording = false;
-    els.btnVoice.innerText = '🎙 Голос';
+    els.btnVoice.innerHTML = '<i data-lucide="mic" style="margin-bottom:-4px"></i> Голос';
+    lucide.createIcons();
     els.btnVoice.classList.remove('pulse-anim');
-    els.aiStatus.innerText = '⏳ Отправка...';
+    els.aiStatus.innerHTML = '<i data-lucide="loader" class="pulse-anim" style="width:16px;height:16px;margin-bottom:-3px;"></i> Отправка...';
+    lucide.createIcons();
 }
 
 async function sendVoice() {
@@ -459,7 +482,8 @@ async function sendVoice() {
             body: formData
         });
         if (res.ok) {
-            els.aiStatus.innerText = '✅ Готово!';
+            els.aiStatus.innerHTML = '<i data-lucide="check" style="width:16px;height:16px;margin-bottom:-3px;"></i> Готово!';
+            lucide.createIcons();
             tg.HapticFeedback.notificationOccurred('success');
             setTimeout(() => { els.aiStatus.innerText = ''; fetchTasks(); fetchNoDateTasks(); }, 2000);
         } else { els.aiStatus.innerText = '❌ Ошибка.'; }
