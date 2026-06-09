@@ -56,7 +56,7 @@ async function fetchTasks() {
         const res = await fetch('/api/tasks', { headers });
         if (!res.ok) return;
         const data = await res.json();
-        renderTasks(data.tasks.pending);
+        renderTasks(data.tasks);
     } catch (e) { console.error(e); }
 }
 
