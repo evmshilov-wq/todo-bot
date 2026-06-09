@@ -59,10 +59,17 @@ async function initApp() {
     const user = tg.initDataUnsafe?.user;
     els.userName.innerText = user?.first_name || 'Пользователь';
     
+    // Avatar Fallback Logic
+    const firstLetter = (user?.first_name || 'U').charAt(0).toUpperCase();
+    const avatarContainer = document.getElementById('user-avatar-container');
+    document.getElementById('user-initial').innerText = firstLetter;
+    
     if (user?.photo_url) {
-        els.userAvatar.src = user.photo_url;
-    } else {
-        els.userAvatar.style.display = 'none'; // Fallback logic
+        const img = new Image();
+        img.src = user.photo_url;
+        img.onload = () => {
+            avatarContainer.innerHTML = `<img src="${user.photo_url}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
+        };
     }
 
     setupTabs();
@@ -75,7 +82,15 @@ async function initApp() {
     await fetchHabits();
     await fetchCategories();
     
-    lucide.createIcons();
+    renderIcons();
+}
+
+function renderIcons() {
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+    } else {
+        console.warn('Lucide not loaded yet.');
+    }
 }
 
 // === DATA FETCHING ===
@@ -127,7 +142,7 @@ async function fetchCategories() {
 
 async function generateReport(days) {
     els.analyticsDigest.innerHTML = '<i data-lucide="loader" class="pulse-anim" style="width:20px;height:20px;display:block;margin:0 auto;"></i><p style="text-align:center;margin-top:8px;">ИИ готовит отчет...</p>';
-    lucide.createIcons();
+    renderIcons();
     try {
         const res = await fetch(`/api/analytics?days=${days}`, { headers });
         if (!res.ok) return;
@@ -190,7 +205,7 @@ function renderTasksList(tasks, container, countEl) {
         `;
         container.appendChild(div);
     });
-    lucide.createIcons();
+    renderIcons();
 }
 
 function renderHabits(habits) {
@@ -213,7 +228,7 @@ function renderHabits(habits) {
         `;
         els.habitsList.appendChild(div);
     });
-    lucide.createIcons();
+    renderIcons();
 }
 
 function renderCategories(categories) {
@@ -227,7 +242,7 @@ function renderCategories(categories) {
         `;
         els.categoriesList.appendChild(div);
     });
-    lucide.createIcons();
+    renderIcons();
 }
 
 function generateCalendar(year, month) {
@@ -424,13 +439,13 @@ function setupAI() {
         const text = els.aiInput.value.trim();
         if (!text) return;
         els.aiStatus.innerHTML = '<i data-lucide="loader" class="pulse-anim" style="width:16px;height:16px;margin-bottom:-3px;"></i> Думаю...';
-        lucide.createIcons();
+        renderIcons();
         els.aiInput.value = '';
         try {
             const res = await fetch('/api/ai_text', { method: 'POST', headers, body: JSON.stringify({ text }) });
             if (res.ok) {
                 els.aiStatus.innerHTML = '<i data-lucide="check" style="width:16px;height:16px;margin-bottom:-3px;"></i> Готово!';
-                lucide.createIcons();
+                renderIcons();
                 tg.HapticFeedback.notificationOccurred('success');
                 setTimeout(() => { els.aiStatus.innerText = ''; fetchTasks(); fetchNoDateTasks(); }, 2000);
             } else { els.aiStatus.innerText = '❌ Ошибка.'; }
@@ -447,10 +462,10 @@ function setupAI() {
             mediaRecorder.start();
             isRecording = true;
             els.btnVoice.innerHTML = '<i data-lucide="square" style="margin-bottom:-4px"></i> Стоп';
-            lucide.createIcons();
+            renderIcons();
             els.btnVoice.classList.add('pulse-anim');
             els.aiStatus.innerHTML = '<i data-lucide="mic" class="pulse-anim" style="width:16px;height:16px;margin-bottom:-3px;"></i> Запись...';
-            lucide.createIcons();
+            renderIcons();
         } catch (e) {
             els.aiStatus.innerText = '❌ Нет доступа к микрофону.';
         }
@@ -464,10 +479,10 @@ function stopRecording() {
     }
     isRecording = false;
     els.btnVoice.innerHTML = '<i data-lucide="mic" style="margin-bottom:-4px"></i> Голос';
-    lucide.createIcons();
+    renderIcons();
     els.btnVoice.classList.remove('pulse-anim');
     els.aiStatus.innerHTML = '<i data-lucide="loader" class="pulse-anim" style="width:16px;height:16px;margin-bottom:-3px;"></i> Отправка...';
-    lucide.createIcons();
+    renderIcons();
 }
 
 async function sendVoice() {
@@ -483,7 +498,7 @@ async function sendVoice() {
         });
         if (res.ok) {
             els.aiStatus.innerHTML = '<i data-lucide="check" style="width:16px;height:16px;margin-bottom:-3px;"></i> Готово!';
-            lucide.createIcons();
+            renderIcons();
             tg.HapticFeedback.notificationOccurred('success');
             setTimeout(() => { els.aiStatus.innerText = ''; fetchTasks(); fetchNoDateTasks(); }, 2000);
         } else { els.aiStatus.innerText = '❌ Ошибка.'; }
