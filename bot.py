@@ -39,6 +39,8 @@ def main():
     dp.startup.register(on_startup)
     
     app = web.Application()
+    from app.api.webapp import setup_routes
+    setup_routes(app)
     SimpleRequestHandler(dispatcher=dp, bot=bot_configured).register(app, path=WEBHOOK_PATH)
     setup_application(app, dp, bot=bot_configured)
     

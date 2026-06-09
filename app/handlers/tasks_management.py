@@ -230,5 +230,7 @@ async def process_snooze_apply_inline(callback_query: types.CallbackQuery):
     if new_date: new_g_id = add_event_to_google(task["text"], new_date, None, True, tz_name)
         
     await update_task_datetime_db(task_id, new_date, is_timeless, new_g_id)
-    await callback_query.answer("✅ Задача перенесена!")
+    from app.database.requests import add_xp
+    await add_xp(callback_query.from_user.id, -5)
+    await callback_query.answer("✅ Задача перенесена! (-5 XP за прокрастинацию)")
     await refresh_view_by_context(callback_query, context)

@@ -72,6 +72,12 @@ async def delete_task_db(task_id: int):
 async def complete_task_db(task_id: int):
     async with async_session() as session:
         await session.execute(update(Task).where(Task.id == task_id).values(is_completed=1))
+        task = await session.scalar(select(Task).where(Task.id == task_id))
+        if task:
+            user = await session.scalar(select(User).where(User.telegram_id == task.user_id))
+            if user:
+                user.xp += 10
+                user.level = (user.xp // 100) + 1
         await session.commit()
 
 async def get_tasks_for_date(user_id: int, target_date: date):
@@ -142,3 +148,50 @@ async def get_stats_for_digest(user_id: int, days: int) -> dict:
         pending = [{"text": t.text, "category": c or "Без категории", "date_time": t.date_time, "priority": t.priority} for t, c in (await session.execute(pend_query)).all()]
         
     return {"completed": completed, "pending": pending, "period_days": days}
+
+async def get_user_stats(user_id: int):
+    async with async_session() as session:
+        user = await session.scalar(select(User).where(User.telegram_id == user_id))
+        return {"xp": user.xp, "level": user.level} if user else {"xp": 0, "level": 1}
+
+async def add_xp(user_id: int, amount: int):
+    async with async_session() as session:
+        user = await session.scalar(select(User).where(User.telegram_id == user_id))
+        if user:
+            user.xp += amount
+            if user.xp < 0: user.xp = 0
+            user.level = (user.xp // 100) + 1
+            await session.commit()
+
+async def get_habits(user_id: int, target_date: date):
+    async with async_session() as session:
+        habits = await session.scalars(select(Habit).where(Habit.user_id == user_id))
+        result = []
+        for h in habits:
+            log = await session.scalar(select(HabitLog).where(HabitLog.habit_id == h.id, HabitLog.date == target_date))
+            result.append({
+                "id": h.id, "name": h.name, "frequency": h.frequency,
+                "current_streak": h.current_streak, "longest_streak": h.longest_streak,
+                "is_completed": bool(log and log.is_completed)
+            })
+        return result
+
+async def add_habit(user_id: int, name: str, frequency: str = "daily"):
+    async with async_session() as session:
+        session.add(Habit(user_id=user_id, name=name, frequency=frequency))
+        await session.commit()
+
+async def complete_habit(habit_id: int, target_date: date):
+    async with async_session() as session:
+        habit = await session.scalar(select(Habit).where(Habit.id == habit_id))
+        if not habit: return False
+        log = await session.scalar(select(HabitLog).where(HabitLog.habit_id == habit_id, HabitLog.date == target_date))
+        if not log:
+            session.add(HabitLog(habit_id=habit_id, date=target_date, is_completed=1))
+            habit.current_streak += 1
+            if habit.current_streak > habit.longest_streak:
+                habit.longest_streak = habit.current_streak
+            await session.commit()
+            return True
+        return False
+

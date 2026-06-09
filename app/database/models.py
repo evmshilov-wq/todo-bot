@@ -1,5 +1,6 @@
-from sqlalchemy import BigInteger, String, Integer
+from sqlalchemy import BigInteger, String, Integer, ForeignKey, Date
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from datetime import date
 
 class Base(DeclarativeBase):
     pass
@@ -9,12 +10,30 @@ class User(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     telegram_id: Mapped[int] = mapped_column(BigInteger, unique=True)
     timezone: Mapped[str] = mapped_column(String, default="Europe/Moscow")
+    xp: Mapped[int] = mapped_column(Integer, default=0)
+    level: Mapped[int] = mapped_column(Integer, default=1)
 
 class Category(Base):
     __tablename__ = 'categories'
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(BigInteger)
     name: Mapped[str] = mapped_column(String)
+
+class Habit(Base):
+    __tablename__ = 'habits'
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(BigInteger)
+    name: Mapped[str] = mapped_column(String)
+    frequency: Mapped[str] = mapped_column(String, default="daily")
+    current_streak: Mapped[int] = mapped_column(Integer, default=0)
+    longest_streak: Mapped[int] = mapped_column(Integer, default=0)
+
+class HabitLog(Base):
+    __tablename__ = 'habit_logs'
+    id: Mapped[int] = mapped_column(primary_key=True)
+    habit_id: Mapped[int] = mapped_column(ForeignKey('habits.id'))
+    date: Mapped[date] = mapped_column(Date)
+    is_completed: Mapped[int] = mapped_column(Integer, default=1)
 
 class Task(Base):
     __tablename__ = 'tasks'

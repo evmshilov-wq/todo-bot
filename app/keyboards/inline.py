@@ -60,11 +60,10 @@ async def get_main_dashboard(user_id: int, user_full_name: str) -> tuple[str, ty
         f"Управляй расписанием кнопками ниже или просто отправь новую задачу текстом/голосом! 👇"
     )
     builder = InlineKeyboardBuilder()
-    builder.button(text="➕ Новая задача", callback_data="menu_new_task")
-    builder.button(text="🔁 Регулярная задача", callback_data="menu_rec_task")
-    builder.button(text="📅 Мои задачи", callback_data="back_to_tasks_menu")
-    builder.button(text="🗂 Настройка категорий", callback_data="menu_categories")
-    builder.adjust(1, 1, 2)
+    from app.config import WEBHOOK_URL
+    builder.row(types.InlineKeyboardButton(text="🚀 ОТКРЫТЬ ПРИЛОЖЕНИЕ", web_app=types.WebAppInfo(url=f"{WEBHOOK_URL}/app")))
+    builder.row(types.InlineKeyboardButton(text="➕ Новая задача", callback_data="menu_new_task"), types.InlineKeyboardButton(text="🔁 Регулярная задача", callback_data="menu_rec_task"))
+    builder.row(types.InlineKeyboardButton(text="📅 Мои задачи", callback_data="back_to_tasks_menu"), types.InlineKeyboardButton(text="🗂 Категории", callback_data="menu_categories"))
     return text, builder.as_markup()
 
 def generate_calendar_markup(year: int, month: int, user_tz: str) -> types.InlineKeyboardMarkup:
