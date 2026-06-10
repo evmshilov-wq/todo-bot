@@ -223,6 +223,8 @@ async def api_ai_text(request: web.Request):
     
     # 5. Process DB mutations
     mutations = {"tasks": ai_response.get("tasks", []), "memories": ai_response.get("memories", []), "notes": ai_response.get("notes", [])}
+    import logging
+    logging.info(f"Parsed AI text mutations: {mutations}")
     
     import json
     for t in mutations["tasks"]:
@@ -312,6 +314,8 @@ async def api_ai_voice(request: web.Request):
     
     # 5. Process DB mutations
     mutations = {"tasks": ai_response.get("tasks", []), "memories": ai_response.get("memories", []), "notes": ai_response.get("notes", [])}
+    import logging
+    logging.info(f"Parsed AI voice mutations: {mutations}")
     
     import json
     for t in mutations["tasks"]:

@@ -46,13 +46,8 @@ class AIChatResponseModel(BaseModel):
 import math
 
 def get_embedding(text_content: str) -> list[float]:
-    if not text_content: return []
-    try:
-        res = client.models.embed_content(model='text-embedding-004', contents=text_content)
-        return res.embeddings[0].values
-    except Exception as e:
-        logging.error(f"Embedding error: {e}")
-        return []
+    # Temporarily disabled to prevent 404 errors with text-embedding-004
+    return []
 
 def cosine_similarity(v1: list[float], v2: list[float]) -> float:
     if not v1 or not v2: return 0.0
