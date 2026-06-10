@@ -14,3 +14,7 @@ async def init_db():
             await conn.execute(text("ALTER TABLE users ADD COLUMN level INTEGER DEFAULT 1"))
         except Exception:
             pass
+        try:
+            await conn.execute(text("ALTER TABLE memories ADD COLUMN embedding TEXT"))
+        except Exception:
+            pass

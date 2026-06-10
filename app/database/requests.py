@@ -195,7 +195,7 @@ async def complete_habit(habit_id: int, target_date: date):
             return True
         return False
 
-from app.database.models import ChatMessage, Memory
+from app.database.models import ChatMessage, Memory, Note
 
 async def get_chat_history(user_id: int, limit: int = 50):
     async with async_session() as session:
@@ -216,15 +216,42 @@ async def get_memories(user_id: int):
     async with async_session() as session:
         query = select(Memory).where(Memory.user_id == user_id).order_by(Memory.id.asc())
         result = await session.scalars(query)
-        return [{"id": m.id, "fact": m.fact, "created_at": m.created_at} for m in result.all()]
+        return [{"id": m.id, "fact": m.fact, "created_at": m.created_at, "embedding": m.embedding} for m in result.all()]
 
-async def add_memory(user_id: int, fact: str):
+async def add_memory(user_id: int, fact: str, embedding: str = None):
     created_at = datetime.now().isoformat()
     async with async_session() as session:
-        session.add(Memory(user_id=user_id, fact=fact, created_at=created_at))
+        session.add(Memory(user_id=user_id, fact=fact, created_at=created_at, embedding=embedding))
         await session.commit()
 
 async def delete_memory_db(memory_id: int):
     async with async_session() as session:
         await session.execute(delete(Memory).where(Memory.id == memory_id))
+        await session.commit()
+
+async def get_notes(user_id: int):
+    async with async_session() as session:
+        query = select(Note).where(Note.user_id == user_id).order_by(Note.id.desc())
+        result = await session.scalars(query)
+        return [{"id": n.id, "title": n.title, "content": n.content, "tags": n.tags, "created_at": n.created_at, "embedding": n.embedding} for n in result.all()]
+
+async def add_note(user_id: int, title: str, content: str, tags: str = None, embedding: str = None):
+    created_at = datetime.now().isoformat()
+    async with async_session() as session:
+        session.add(Note(user_id=user_id, title=title, content=content, tags=tags, created_at=created_at, embedding=embedding))
+        await session.commit()
+
+async def update_note_db(note_id: int, title: str, content: str, tags: str = None, embedding: str = None):
+    async with async_session() as session:
+        note = await session.scalar(select(Note).where(Note.id == note_id))
+        if note:
+            note.title = title
+            note.content = content
+            if tags is not None: note.tags = tags
+            if embedding is not None: note.embedding = embedding
+            await session.commit()
+
+async def delete_note_db(note_id: int):
+    async with async_session() as session:
+        await session.execute(delete(Note).where(Note.id == note_id))
         await session.commit()

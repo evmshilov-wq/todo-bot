@@ -65,3 +65,14 @@ class Memory(Base):
     user_id: Mapped[int] = mapped_column(BigInteger)
     fact: Mapped[str] = mapped_column(String)
     created_at: Mapped[str] = mapped_column(String)
+    embedding: Mapped[str] = mapped_column(String, nullable=True) # JSON string of floats
+
+class Note(Base):
+    __tablename__ = 'notes'
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(BigInteger)
+    title: Mapped[str] = mapped_column(String)
+    content: Mapped[str] = mapped_column(String)
+    tags: Mapped[str] = mapped_column(String, nullable=True) # comma-separated
+    created_at: Mapped[str] = mapped_column(String)
+    embedding: Mapped[str] = mapped_column(String, nullable=True) # JSON string of floats

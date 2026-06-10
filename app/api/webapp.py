@@ -193,9 +193,10 @@ async def api_ai_text(request: web.Request):
     from app.database.requests import (
         get_user_timezone, get_user_categories, add_task, update_task_text_db, 
         update_task_datetime_db, delete_task_db, get_chat_history, add_chat_message,
-        get_memories, add_memory, delete_memory_db, get_tasks_for_today, get_tasks_without_date
+        get_memories, add_memory, delete_memory_db, get_tasks_for_today, get_tasks_without_date,
+        get_notes, add_note, update_note_db, delete_note_db
     )
-    from app.services.ai_parser import process_chat_message
+    from app.services.ai_parser import process_chat_message, get_embedding
     from app.services.google_cal import add_event_to_google
     
     user_tz = await get_user_timezone(user_id)
@@ -205,6 +206,7 @@ async def api_ai_text(request: web.Request):
     # 1. Gather Context
     chat_history = await get_chat_history(user_id, limit=20)
     memories = await get_memories(user_id)
+    notes = await get_notes(user_id)
     today_tasks = await get_tasks_for_today(user_id)
     nodate_tasks = await get_tasks_without_date(user_id)
     current_tasks = today_tasks + nodate_tasks
@@ -220,8 +222,9 @@ async def api_ai_text(request: web.Request):
     await add_chat_message(user_id, "assistant", reply_text)
     
     # 5. Process DB mutations
-    mutations = {"tasks": ai_response.get("tasks", []), "memories": ai_response.get("memories", [])}
+    mutations = {"tasks": ai_response.get("tasks", []), "memories": ai_response.get("memories", []), "notes": ai_response.get("notes", [])}
     
+    import json
     for t in mutations["tasks"]:
         action = t.get("action")
         if action == "add":
@@ -239,9 +242,21 @@ async def api_ai_text(request: web.Request):
     for m in mutations["memories"]:
         action = m.get("action")
         if action == "add" and m.get("fact_text"):
-            await add_memory(user_id, m["fact_text"])
+            vec = get_embedding(m["fact_text"])
+            await add_memory(user_id, m["fact_text"], json.dumps(vec) if vec else None)
         elif action == "delete" and m.get("memory_id"):
             await delete_memory_db(m["memory_id"])
+            
+    for n in mutations["notes"]:
+        action = n.get("action")
+        if action == "add" and n.get("title") and n.get("content"):
+            vec = get_embedding(n["title"] + " " + n["content"])
+            await add_note(user_id, n["title"], n["content"], n.get("tags"), json.dumps(vec) if vec else None)
+        elif action == "edit" and n.get("note_id"):
+            vec = get_embedding(n.get("title", "") + " " + n.get("content", ""))
+            await update_note_db(n["note_id"], n.get("title"), n.get("content"), n.get("tags"), json.dumps(vec) if vec else None)
+        elif action == "delete" and n.get("note_id"):
+            await delete_note_db(n["note_id"])
 
     return web.json_response({"status": "ok", "reply": reply_text, "mutations": mutations})
 
@@ -264,9 +279,10 @@ async def api_ai_voice(request: web.Request):
     from app.database.requests import (
         get_user_timezone, get_user_categories, add_task, update_task_text_db, 
         update_task_datetime_db, delete_task_db, get_chat_history, add_chat_message,
-        get_memories, add_memory, delete_memory_db, get_tasks_for_today, get_tasks_without_date
+        get_memories, add_memory, delete_memory_db, get_tasks_for_today, get_tasks_without_date,
+        get_notes, add_note, update_note_db, delete_note_db
     )
-    from app.services.ai_parser import process_chat_voice
+    from app.services.ai_parser import process_chat_voice, get_embedding
     from app.services.google_cal import add_event_to_google
     import os
     
@@ -277,12 +293,13 @@ async def api_ai_voice(request: web.Request):
     # 1. Gather Context
     chat_history = await get_chat_history(user_id, limit=20)
     memories = await get_memories(user_id)
+    notes = await get_notes(user_id)
     today_tasks = await get_tasks_for_today(user_id)
     nodate_tasks = await get_tasks_without_date(user_id)
     current_tasks = today_tasks + nodate_tasks
     
     # 3. Call AI
-    ai_response = await process_chat_voice(file_path, chat_history, current_tasks, memories, cat_names, user_tz)
+    ai_response = await process_chat_voice(file_path, chat_history, current_tasks, memories, notes, cat_names, user_tz)
     os.remove(file_path)
     
     reply_text = ai_response.get("reply", "Прости, не расслышал.")
@@ -294,8 +311,9 @@ async def api_ai_voice(request: web.Request):
     await add_chat_message(user_id, "assistant", reply_text)
     
     # 5. Process DB mutations
-    mutations = {"tasks": ai_response.get("tasks", []), "memories": ai_response.get("memories", [])}
+    mutations = {"tasks": ai_response.get("tasks", []), "memories": ai_response.get("memories", []), "notes": ai_response.get("notes", [])}
     
+    import json
     for t in mutations["tasks"]:
         action = t.get("action")
         if action == "add":
@@ -313,9 +331,21 @@ async def api_ai_voice(request: web.Request):
     for m in mutations["memories"]:
         action = m.get("action")
         if action == "add" and m.get("fact_text"):
-            await add_memory(user_id, m["fact_text"])
+            vec = get_embedding(m["fact_text"])
+            await add_memory(user_id, m["fact_text"], json.dumps(vec) if vec else None)
         elif action == "delete" and m.get("memory_id"):
             await delete_memory_db(m["memory_id"])
+            
+    for n in mutations["notes"]:
+        action = n.get("action")
+        if action == "add" and n.get("title") and n.get("content"):
+            vec = get_embedding(n["title"] + " " + n["content"])
+            await add_note(user_id, n["title"], n["content"], n.get("tags"), json.dumps(vec) if vec else None)
+        elif action == "edit" and n.get("note_id"):
+            vec = get_embedding(n.get("title", "") + " " + n.get("content", ""))
+            await update_note_db(n["note_id"], n.get("title"), n.get("content"), n.get("tags"), json.dumps(vec) if vec else None)
+        elif action == "delete" and n.get("note_id"):
+            await delete_note_db(n["note_id"])
 
     return web.json_response({"status": "ok", "reply": reply_text, "mutations": mutations})
 
@@ -357,3 +387,63 @@ def setup_routes(app: web.Application):
         return web.FileResponse(os.path.join(static_path, "index.html"))
     app.router.add_get("/", index_handler)
     app.router.add_get("/app", index_handler)
+
+@routes.get("/api/notes")
+async def api_get_notes(request: web.Request):
+    user_id = get_user_id(request)
+    if not user_id: return web.json_response({"error": "Unauthorized"}, status=401)
+    from app.database.requests import get_notes
+    notes = await get_notes(user_id)
+    # Remove embeddings from response payload to save bandwidth
+    for n in notes:
+        n.pop("embedding", None)
+    return web.json_response({"notes": notes})
+
+@routes.delete("/api/notes/{note_id}")
+async def api_delete_note(request: web.Request):
+    user_id = get_user_id(request)
+    if not user_id: return web.json_response({"error": "Unauthorized"}, status=401)
+    note_id = int(request.match_info["note_id"])
+    from app.database.requests import delete_note_db
+    await delete_note_db(note_id)
+    return web.json_response({"status": "ok"})
+
+@routes.get("/api/graph")
+async def api_get_graph(request: web.Request):
+    user_id = get_user_id(request)
+    if not user_id: return web.json_response({"error": "Unauthorized"}, status=401)
+    from app.database.requests import get_memories, get_notes
+    memories = await get_memories(user_id)
+    notes = await get_notes(user_id)
+    
+    nodes = []
+    links = []
+    
+    # 1. Base Nodes
+    nodes.append({"id": "You", "name": "Ты", "group": 0, "val": 10})
+    
+    # 2. Add Memories
+    for m in memories:
+        node_id = f"mem_{m['id']}"
+        nodes.append({"id": node_id, "name": m['fact'], "group": 1, "val": 2})
+        links.append({"source": "You", "target": node_id})
+        
+    # 3. Add Notes and extract tags
+    tags = set()
+    for n in notes:
+        node_id = f"note_{n['id']}"
+        nodes.append({"id": node_id, "name": n['title'], "group": 2, "val": 5})
+        links.append({"source": "You", "target": node_id})
+        if n.get("tags"):
+            for t in n["tags"].split(","):
+                tag = t.strip().lower()
+                if not tag.startswith("#"): tag = "#" + tag
+                tags.add(tag)
+                links.append({"source": tag, "target": node_id})
+                
+    # 4. Add Tag nodes
+    for tag in tags:
+        nodes.append({"id": tag, "name": tag, "group": 3, "val": 3})
+        links.append({"source": "You", "target": tag})
+        
+    return web.json_response({"nodes": nodes, "links": links})
