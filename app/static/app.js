@@ -602,7 +602,7 @@ initApp();
 
 // === SECOND BRAIN TABS ===
 function switchBrainTab(tabName) {
-    document.querySelectorAll('.brain-tab').forEach(b => b.classList.remove('primary'));
+    document.querySelectorAll('.brain-tabs button').forEach(b => b.classList.remove('primary'));
     document.getElementById('btn-tab-' + tabName).classList.add('primary');
     
     document.querySelectorAll('.brain-content').forEach(c => c.style.display = 'none');
@@ -619,6 +619,10 @@ let Graph = null;
 async function initGraph() {
     if (Graph) return; // Already initialized
     try {
+        const headers = {
+            'Content-Type': 'application/json',
+            'Authorization': 'tma ' + (window.Telegram.WebApp.initData || '')
+        };
         const res = await fetch('/api/graph', { headers });
         if (!res.ok) return;
         const gData = await res.json();
@@ -657,6 +661,10 @@ async function initGraph() {
 
 async function fetchNotes() {
     try {
+        const headers = {
+            'Content-Type': 'application/json',
+            'Authorization': 'tma ' + (window.Telegram.WebApp.initData || '')
+        };
         const res = await fetch('/api/notes', { headers });
         if (!res.ok) return;
         const data = await res.json();
