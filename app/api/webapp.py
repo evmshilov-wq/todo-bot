@@ -378,6 +378,18 @@ async def api_delete_memory(request: web.Request):
     await delete_memory_db(memory_id)
     return web.json_response({"status": "ok"})
 
+@routes.put("/api/memories/{memory_id}")
+async def api_update_memory(request: web.Request):
+    user_id = get_user_id(request)
+    if not user_id: return web.json_response({"error": "Unauthorized"}, status=401)
+    memory_id = int(request.match_info["memory_id"])
+    data = await request.json()
+    fact_text = data.get("fact")
+    if not fact_text: return web.json_response({"error": "Missing fact"}, status=400)
+    from app.database.requests import update_memory_db
+    await update_memory_db(memory_id, fact_text)
+    return web.json_response({"status": "ok"})
+
 # Setup static frontend
 def setup_routes(app: web.Application):
     app.add_routes(routes)
@@ -410,6 +422,19 @@ async def api_delete_note(request: web.Request):
     note_id = int(request.match_info["note_id"])
     from app.database.requests import delete_note_db
     await delete_note_db(note_id)
+    return web.json_response({"status": "ok"})
+
+@routes.put("/api/notes/{note_id}")
+async def api_update_note(request: web.Request):
+    user_id = get_user_id(request)
+    if not user_id: return web.json_response({"error": "Unauthorized"}, status=401)
+    note_id = int(request.match_info["note_id"])
+    data = await request.json()
+    title = data.get("title")
+    content = data.get("content")
+    if not title or not content: return web.json_response({"error": "Missing title or content"}, status=400)
+    from app.database.requests import update_note_db
+    await update_note_db(note_id, title, content)
     return web.json_response({"status": "ok"})
 
 @routes.get("/api/graph")

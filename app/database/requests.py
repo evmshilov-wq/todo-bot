@@ -229,6 +229,13 @@ async def delete_memory_db(memory_id: int):
         await session.execute(delete(Memory).where(Memory.id == memory_id))
         await session.commit()
 
+async def update_memory_db(memory_id: int, fact_text: str):
+    async with async_session() as session:
+        memory = await session.scalar(select(Memory).where(Memory.id == memory_id))
+        if memory:
+            memory.fact = fact_text
+            await session.commit()
+
 async def get_notes(user_id: int):
     async with async_session() as session:
         query = select(Note).where(Note.user_id == user_id).order_by(Note.id.desc())

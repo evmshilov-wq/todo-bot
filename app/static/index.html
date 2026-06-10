@@ -175,10 +175,28 @@
 
     <div id="note-modal" class="modal-overlay hidden">
         <div class="modal-content glass-panel" style="max-width: 90%; max-height: 80vh; overflow-y:auto;">
-            <h3 id="note-modal-title">Заметка</h3>
-            <div id="note-modal-content" style="font-size:14px; line-height:1.5; color:var(--text-main); white-space:pre-wrap;"></div>
+            <input type="text" id="note-modal-title" class="glass-input" style="font-weight:bold; font-size:18px; margin-bottom:8px;">
+            <textarea id="note-modal-content" class="glass-input" style="height:200px; font-size:14px; line-height:1.5; white-space:pre-wrap; resize:vertical;"></textarea>
+            <div class="modal-actions" style="margin-top:16px;">
+                <button class="glass-btn" style="color:var(--danger);" onclick="deleteNote()">Удалить</button>
+                <div style="display:flex; gap:8px;">
+                    <button class="glass-btn" onclick="hideModal('note-modal')">Отмена</button>
+                    <button class="glass-btn primary" onclick="submitEditNote()">Сохранить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="edit-memory-modal" class="modal-overlay hidden">
+        <div class="modal-content glass-panel">
+            <h3>Редактировать факт</h3>
+            <textarea id="edit-memory-text" class="glass-input" style="height:100px;"></textarea>
             <div class="modal-actions">
-                <button class="glass-btn primary" onclick="hideModal('note-modal')">Закрыть</button>
+                <button class="glass-btn" style="color:var(--danger);" onclick="deleteMemoryModal()">Удалить</button>
+                <div style="display:flex; gap:8px;">
+                    <button class="glass-btn" onclick="hideModal('edit-memory-modal')">Отмена</button>
+                    <button class="glass-btn primary" onclick="submitEditMemory()">Сохранить</button>
+                </div>
             </div>
         </div>
     </div>
