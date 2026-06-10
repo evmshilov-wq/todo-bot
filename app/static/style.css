@@ -222,7 +222,7 @@ body::before {
     display: flex;
     flex-direction: column;
     gap: 12px;
-    padding-bottom: 80px; /* Space for input */
+    padding-bottom: 140px; /* Space for input */
     overflow-y: auto;
 }
 
@@ -250,7 +250,7 @@ body::before {
 
 .chat-input-area {
     position: fixed;
-    bottom: 80px; /* Above nav bar */
+    bottom: 110px; /* Higher above nav bar */
     left: 16px;
     right: 16px;
     display: flex;
