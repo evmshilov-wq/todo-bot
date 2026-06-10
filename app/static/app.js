@@ -512,10 +512,11 @@ function setupAI() {
                 els.aiStatus.style.display = 'none';
                 tg.HapticFeedback.notificationOccurred('success');
                 
-                if (data.mutations.tasks.length > 0 || data.mutations.memories.length > 0) {
+                if (data.mutations.tasks?.length > 0 || data.mutations.memories?.length > 0 || data.mutations.notes?.length > 0) {
                     fetchTasks(); 
                     fetchNoDateTasks();
                     fetchMemories();
+                    fetchNotes();
                 }
             } else { els.aiStatus.innerText = '❌ Ошибка.'; }
         } catch(e) { els.aiStatus.innerText = '❌ Ошибка сети.'; }
@@ -576,10 +577,11 @@ async function sendVoice() {
             els.aiStatus.style.display = 'none';
             tg.HapticFeedback.notificationOccurred('success');
             
-            if (data.mutations.tasks.length > 0 || data.mutations.memories.length > 0) {
+            if (data.mutations.tasks?.length > 0 || data.mutations.memories?.length > 0 || data.mutations.notes?.length > 0) {
                 fetchTasks(); 
                 fetchNoDateTasks();
                 fetchMemories();
+                fetchNotes();
             }
         } else { els.aiStatus.innerText = '❌ Ошибка.'; }
     } catch(e) { els.aiStatus.innerText = '❌ Ошибка сети.'; }
@@ -621,7 +623,7 @@ async function initGraph() {
     try {
         const headers = {
             'Content-Type': 'application/json',
-            'Authorization': 'tma ' + (window.Telegram.WebApp.initData || '')
+            'Authorization': 'twa ' + (window.Telegram.WebApp.initData || '')
         };
         const res = await fetch('/api/graph', { headers });
         if (!res.ok) return;
@@ -663,7 +665,7 @@ async function fetchNotes() {
     try {
         const headers = {
             'Content-Type': 'application/json',
-            'Authorization': 'tma ' + (window.Telegram.WebApp.initData || '')
+            'Authorization': 'twa ' + (window.Telegram.WebApp.initData || '')
         };
         const res = await fetch('/api/notes', { headers });
         if (!res.ok) return;
