@@ -18,6 +18,9 @@ body {
     color: var(--text-main);
     -webkit-font-smoothing: antialiased;
     overflow: hidden;
+    max-width: 480px;
+    margin: 0 auto;
+    position: relative;
 }
 
 /* Floating Aurora Glow */
@@ -251,8 +254,10 @@ body::before {
 .chat-input-area {
     position: fixed;
     bottom: 110px; /* Higher above nav bar */
-    left: 16px;
-    right: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: calc(100% - 32px);
+    max-width: 448px;
     display: flex;
     align-items: center;
     gap: 8px;
@@ -295,8 +300,10 @@ body::before {
 .bottom-nav {
     position: fixed; 
     bottom: calc(20px + env(safe-area-inset-bottom)); 
-    left: 20px; 
-    right: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: calc(100% - 40px);
+    max-width: 440px;
     display: flex; justify-content: space-around; align-items: center;
     padding: 8px 16px;
     height: 72px;

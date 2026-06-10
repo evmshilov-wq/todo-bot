@@ -18,3 +18,17 @@ async def init_db():
             await conn.execute(text("ALTER TABLE memories ADD COLUMN embedding TEXT"))
         except Exception:
             pass
+        try:
+            await conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS notes (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id BIGINT,
+                    title VARCHAR,
+                    content VARCHAR,
+                    tags VARCHAR,
+                    created_at VARCHAR,
+                    embedding TEXT
+                )
+            """))
+        except Exception:
+            pass
