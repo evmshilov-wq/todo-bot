@@ -215,7 +215,7 @@ async def api_ai_text(request: web.Request):
     await add_chat_message(user_id, "user", text)
     
     # 3. Call AI
-    ai_response = await process_chat_message(text, chat_history, current_tasks, memories, cat_names, user_tz)
+    ai_response = await process_chat_message(text, chat_history, current_tasks, memories, notes, cat_names, user_tz)
     reply_text = ai_response.get("reply", "Произошла ошибка обработки.")
     
     # 4. Save AI Reply
