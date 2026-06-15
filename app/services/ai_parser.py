@@ -46,8 +46,15 @@ class AIChatResponseModel(BaseModel):
 import math
 
 def get_embedding(text_content: str) -> list[float]:
-    # Temporarily disabled to prevent 404 errors with text-embedding-004
-    return []
+    try:
+        response = client.models.embed_content(
+            model="text-embedding-004", 
+            contents=text_content
+        )
+        return response.embeddings[0].values
+    except Exception as e:
+        logging.error(f"Embedding error: {e}")
+        return []
 
 def cosine_similarity(v1: list[float], v2: list[float]) -> float:
     if not v1 or not v2: return 0.0
@@ -166,14 +173,28 @@ async def process_chat_message(user_text: str, chat_history: list, current_tasks
         return {"reply": "Прости, я немного задумался и потерял мысль (ошибка сети). Повтори, пожалуйста?", "tasks": [], "memories": []}
 
 async def process_chat_voice(file_path: str, chat_history: list, current_tasks: list, memories: list, notes: list, available_categories: list, user_tz: str, user_text: str = "") -> dict:
-    rel_mem, rel_notes = fetch_relevant_context(user_text, memories, notes)
-    system_prompt = get_ai_system_prompt(available_categories, user_tz, current_tasks, rel_mem, rel_notes)
-    contents = format_history_for_gemini(chat_history)
-    
     try:
         uploaded_file = client.files.upload(file=file_path)
-        contents.append(genai_types.Content(role="user", parts=[genai_types.Part.from_uri(file_uri=uploaded_file.uri, mime_type=uploaded_file.mime_type)]))
         
+        # Step 1: Transcribe the audio
+        transcribe_resp = client.models.generate_content(
+            model="gemini-2.5-flash-lite", 
+            contents=[
+                genai_types.Part.from_uri(file_uri=uploaded_file.uri, mime_type=uploaded_file.mime_type),
+                "Точно распознай текст из этого аудиосообщения. Напиши ТОЛЬКО распознанный текст без каких-либо комментариев."
+            ]
+        )
+        transcribed_text = transcribe_resp.text.strip()
+        
+        # Step 2: Fetch Semantic Context using the transcribed text
+        rel_mem, rel_notes = fetch_relevant_context(transcribed_text, memories, notes)
+        system_prompt = get_ai_system_prompt(available_categories, user_tz, current_tasks, rel_mem, rel_notes)
+        contents = format_history_for_gemini(chat_history)
+        
+        # We append the transcribed text as the user's explicit message, so the AI knows exactly what was said
+        contents.append(genai_types.Content(role="user", parts=[genai_types.Part.from_text(text=transcribed_text)]))
+        
+        # Step 3: Generate the actual response
         response = client.models.generate_content(
             model=AI_MODEL, 
             contents=contents,
@@ -184,7 +205,12 @@ async def process_chat_voice(file_path: str, chat_history: list, current_tasks: 
             )
         )
         client.files.delete(name=uploaded_file.name)
-        return json.loads(response.text.strip())
+        
+        ai_resp = json.loads(response.text.strip())
+        # To help the backend save the correct user message to DB, we can optionally pass it back.
+        # For now, we will add 'transcribed_text' to the returned dict so `webapp.py` can save it!
+        ai_resp["transcribed_text"] = transcribed_text
+        return ai_resp
     except Exception as e:
         logging.error(f"Ошибка AI Voice Chat: {e}")
         return {"reply": "Прости, я не смог разобрать голосовое. Можешь повторить?", "tasks": [], "memories": []}

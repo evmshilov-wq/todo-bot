@@ -305,11 +305,9 @@ async def api_ai_voice(request: web.Request):
     os.remove(file_path)
     
     reply_text = ai_response.get("reply", "Прости, не расслышал.")
+    transcribed_text = ai_response.get("transcribed_text", "[Голосовое сообщение]")
     
-    # We do NOT save user's voice as text in the history right now since Gemini handles it via file.
-    # But it would be good to have the transcript. Since Gemini doesn't return the transcript, 
-    # we'll just save a placeholder or we can skip saving the user message.
-    await add_chat_message(user_id, "user", "[Голосовое сообщение]")
+    await add_chat_message(user_id, "user", transcribed_text)
     await add_chat_message(user_id, "assistant", reply_text)
     
     # 5. Process DB mutations
@@ -442,6 +440,7 @@ async def api_get_graph(request: web.Request):
     user_id = get_user_id(request)
     if not user_id: return web.json_response({"error": "Unauthorized"}, status=401)
     from app.database.requests import get_memories, get_notes
+    from app.services.ai_parser import cosine_similarity
     memories = await get_memories(user_id)
     notes = await get_notes(user_id)
     
@@ -451,17 +450,21 @@ async def api_get_graph(request: web.Request):
     # 1. Base Nodes
     nodes.append({"id": "You", "name": "Ты", "group": 0, "val": 10})
     
+    # helper for truncation
+    def trunc(text, max_len=25):
+        return text if len(text) <= max_len else text[:max_len-3] + "..."
+    
     # 2. Add Memories
     for m in memories:
         node_id = f"mem_{m['id']}"
-        nodes.append({"id": node_id, "name": m['fact'], "group": 1, "val": 2})
+        nodes.append({"id": node_id, "name": trunc(m['fact']), "group": 1, "val": 2})
         links.append({"source": "You", "target": node_id})
         
     # 3. Add Notes and extract tags
     tags = set()
     for n in notes:
         node_id = f"note_{n['id']}"
-        nodes.append({"id": node_id, "name": n['title'], "group": 2, "val": 5})
+        nodes.append({"id": node_id, "name": trunc(n['title']), "group": 2, "val": 5})
         links.append({"source": "You", "target": node_id})
         if n.get("tags"):
             for t in n["tags"].split(","):
@@ -474,5 +477,28 @@ async def api_get_graph(request: web.Request):
     for tag in tags:
         nodes.append({"id": tag, "name": tag, "group": 3, "val": 3})
         links.append({"source": "You", "target": tag})
+        
+    # 5. Add Semantic Links (Cosine Similarity > 0.75)
+    import json
+    all_items = []
+    for m in memories:
+        if m.get("embedding"):
+            try: all_items.append({"id": f"mem_{m['id']}", "vec": json.loads(m["embedding"])})
+            except: pass
+    for n in notes:
+        if n.get("embedding"):
+            try: all_items.append({"id": f"note_{n['id']}", "vec": json.loads(n["embedding"])})
+            except: pass
+            
+    for i in range(len(all_items)):
+        for j in range(i + 1, len(all_items)):
+            sim = cosine_similarity(all_items[i]["vec"], all_items[j]["vec"])
+            if sim > 0.75:
+                links.append({
+                    "source": all_items[i]["id"], 
+                    "target": all_items[j]["id"], 
+                    "is_semantic": True,
+                    "value": sim
+                })
         
     return web.json_response({"nodes": nodes, "links": links})

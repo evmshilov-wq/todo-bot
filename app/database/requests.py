@@ -198,8 +198,13 @@ async def complete_habit(habit_id: int, target_date: date):
 from app.database.models import ChatMessage, Memory, Note
 
 async def get_chat_history(user_id: int, limit: int = 50):
+    tz_name = await get_user_timezone(user_id)
+    today_start = datetime.now(ZoneInfo(tz_name)).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
     async with async_session() as session:
-        query = select(ChatMessage).where(ChatMessage.user_id == user_id).order_by(ChatMessage.id.desc()).limit(limit)
+        query = select(ChatMessage).where(
+            ChatMessage.user_id == user_id,
+            ChatMessage.created_at >= today_start
+        ).order_by(ChatMessage.id.desc()).limit(limit)
         result = await session.scalars(query)
         # Reverse to get chronological order
         messages = [{"role": msg.role, "text": msg.text} for msg in result.all()]
