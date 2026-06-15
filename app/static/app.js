@@ -610,7 +610,11 @@ function setupTabs() {
             navItems.forEach(nav => nav.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
             item.classList.add('active');
-            document.getElementById(item.dataset.target).classList.add('active');
+            const targetId = item.dataset.target;
+            document.getElementById(targetId).classList.add('active');
+            if (targetId === 'tab-ai') {
+                setTimeout(scrollToBottom, 100);
+            }
             tg.HapticFeedback.impactOccurred('light');
         });
     });
@@ -682,11 +686,13 @@ async function initGraph(forceRefresh = false) {
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
                 ctx.fillText(label, node.x, node.y + node.val + fontSize);
             })
-            .linkColor(link => 'rgba(255, 255, 255, 0.15)')
-            .linkWidth(1.5)
-            .linkDirectionalParticles(3)
-            .linkDirectionalParticleWidth(2)
+            .linkColor(link => link.is_semantic ? 'rgba(180, 100, 255, 0.3)' : 'rgba(255, 255, 255, 0.15)')
+            .linkWidth(link => link.is_semantic ? 1 : 1.5)
+            .linkLineDash(link => link.is_semantic ? [2, 2] : null)
+            .linkDirectionalParticles(link => link.is_semantic ? 1 : 3)
+            .linkDirectionalParticleWidth(link => link.is_semantic ? 1.5 : 2)
             .linkDirectionalParticleColor(link => {
+                if (link.is_semantic) return 'rgba(180, 100, 255, 0.8)';
                 if (link.target.group === 1) return 'rgba(170, 170, 170, 0.8)';
                 if (link.target.group === 2) return 'rgba(77, 148, 255, 0.8)';
                 if (link.target.group === 3) return 'rgba(255, 77, 77, 0.8)';
