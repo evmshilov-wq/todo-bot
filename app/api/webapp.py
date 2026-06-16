@@ -558,9 +558,13 @@ async def api_auth_google(request: web.Request):
     
     auth_url, state = flow.authorization_url(prompt='consent', access_type='offline')
     
-    # Store state and user_id temporarily, we can use a simple dict in memory or pass user_id in state
+    # Store state, user_id and code_verifier temporarily
     import base64
-    state_payload = base64.urlsafe_b64encode(json.dumps({"user_id": user_id, "state": state}).encode()).decode()
+    state_data = {"user_id": user_id, "state": state}
+    if hasattr(flow, 'code_verifier'):
+        state_data["code_verifier"] = flow.code_verifier
+        
+    state_payload = base64.urlsafe_b64encode(json.dumps(state_data).encode()).decode()
     
     # Re-generate auth url with our custom state payload
     auth_url, _ = flow.authorization_url(prompt='consent', access_type='offline', state=state_payload)
@@ -577,6 +581,7 @@ async def api_auth_google_callback(request: web.Request):
     try:
         state_data = json.loads(base64.urlsafe_b64decode(state_payload).decode())
         user_id = state_data.get("user_id")
+        code_verifier = state_data.get("code_verifier")
     except Exception:
         return web.Response(text="Invalid state", status=400)
         
@@ -588,6 +593,9 @@ async def api_auth_google_callback(request: web.Request):
     flow = get_oauth_flow(redirect_uri)
     if not flow: return web.Response(text="Server config error", status=500)
     
+    if code_verifier:
+        flow.code_verifier = code_verifier
+        
     try:
         import os
         os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
