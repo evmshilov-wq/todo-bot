@@ -14,6 +14,20 @@ from app.database.requests import get_google_token, update_google_token
 CREDENTIALS_PATH = '/data/credentials.json' if os.path.exists('/data/credentials.json') else 'credentials.json'
 
 def get_oauth_flow(redirect_uri: str):
+    creds_json_env = os.getenv('GOOGLE_CREDENTIALS_JSON')
+    if creds_json_env:
+        try:
+            creds_config = json.loads(creds_json_env)
+            return Flow.from_client_config(
+                creds_config,
+                scopes=SCOPES,
+                redirect_uri=redirect_uri
+            )
+        except Exception as e:
+            import logging
+            logging.error(f"Error parsing GOOGLE_CREDENTIALS_JSON: {e}")
+            return None
+
     if not os.path.exists(CREDENTIALS_PATH):
         return None
     flow = Flow.from_client_secrets_file(
