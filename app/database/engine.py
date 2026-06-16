@@ -23,6 +23,16 @@ async def init_db():
         except Exception:
             pass
         try:
+            await conn.execute(text("ALTER TABLE users ADD COLUMN morning_time VARCHAR DEFAULT '09:00'"))
+            await conn.execute(text("ALTER TABLE users ADD COLUMN evening_time VARCHAR DEFAULT '23:00'"))
+        except Exception:
+            pass
+        try:
+            await conn.execute(text("ALTER TABLE categories ADD COLUMN color VARCHAR"))
+            await conn.execute(text("ALTER TABLE categories ADD COLUMN icon VARCHAR"))
+        except Exception:
+            pass
+        try:
             await conn.execute(text("""
                 CREATE TABLE IF NOT EXISTS notes (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,

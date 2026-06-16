@@ -16,6 +16,8 @@ dp.include_router(common_router)
 
 async def on_startup(bot: Bot):
     await init_db()
+    from app.services.scheduler import setup_scheduler
+    setup_scheduler(bot)
     await bot.set_webhook(f"{WEBHOOK_URL}{WEBHOOK_PATH}", drop_pending_updates=True)
 
 def main():

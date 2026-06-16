@@ -38,12 +38,21 @@ async def update_google_token(telegram_id: int, token_json: str | None):
 async def get_user_categories(telegram_id: int):
     async with async_session() as session:
         cats = await session.scalars(select(Category).where(Category.user_id == telegram_id))
-        return [{"id": c.id, "name": c.name} for c in cats]
+        return [{"id": c.id, "name": c.name, "color": c.color, "icon": c.icon} for c in cats]
 
-async def add_category_db(user_id: int, name: str):
+async def add_category_db(user_id: int, name: str, color: str = None, icon: str = None):
     async with async_session() as session:
-        session.add(Category(user_id=user_id, name=name))
+        session.add(Category(user_id=user_id, name=name, color=color, icon=icon))
         await session.commit()
+
+async def update_category_db(category_id: int, name: str, color: str = None, icon: str = None):
+    async with async_session() as session:
+        cat = await session.scalar(select(Category).where(Category.id == category_id))
+        if cat:
+            cat.name = name
+            cat.color = color
+            cat.icon = icon
+            await session.commit()
 
 async def delete_category_db(category_id: int):
     async with async_session() as session:
@@ -93,7 +102,7 @@ async def complete_task_db(task_id: int):
 async def get_tasks_for_date(user_id: int, target_date: date):
     date_str = target_date.strftime("%Y-%m-%d")
     async with async_session() as session:
-        query = select(Task, Category.name.label("category_name")).outerjoin(Category, Task.category_id == Category.id).where(
+        query = select(Task, Category).outerjoin(Category, Task.category_id == Category.id).where(
             Task.user_id == user_id,
             Task.is_completed == 0,
             ((Task.date_time.like(f"{date_str}%")) | ((Task.is_timeless == 1) & (Task.date_time.like(f"{date_str}%"))))
@@ -101,7 +110,7 @@ async def get_tasks_for_date(user_id: int, target_date: date):
         
         result = await session.execute(query)
         rows = result.all()
-        return [{"id": t.id, "text": t.text, "date_time": t.date_time, "is_timeless": t.is_timeless, "category": cat_name, "is_recurring": t.is_recurring, "recurrence_rule": t.recurrence_rule, "end_time": t.end_time, "google_event_id": t.google_event_id, "priority": t.priority} for t, cat_name in rows]
+        return [{"id": t.id, "text": t.text, "date_time": t.date_time, "is_timeless": t.is_timeless, "category": c.name if c else None, "cat_color": c.color if c else None, "cat_icon": c.icon if c else None, "is_recurring": t.is_recurring, "recurrence_rule": t.recurrence_rule, "end_time": t.end_time, "google_event_id": t.google_event_id, "priority": t.priority} for t, c in rows]
 
 async def get_tasks_for_today(user_id: int):
     tz_name = await get_user_timezone(user_id)
@@ -121,25 +130,25 @@ async def get_completed_tasks_for_today(user_id: int):
 
 async def get_tasks_without_date(user_id: int):
     async with async_session() as session:
-        query = select(Task, Category.name.label("category_name")).outerjoin(Category, Task.category_id == Category.id).where(
+        query = select(Task, Category).outerjoin(Category, Task.category_id == Category.id).where(
             Task.user_id == user_id,
             Task.is_completed == 0,
             Task.date_time.is_(None)
         ).order_by(Task.priority.asc(), Task.id.desc())
         
         rows = (await session.execute(query)).all()
-        return [{"id": t.id, "text": t.text, "date_time": None, "is_timeless": 1, "category": cat_name, "end_time": None, "google_event_id": t.google_event_id, "priority": t.priority} for t, cat_name in rows]
+        return [{"id": t.id, "text": t.text, "date_time": None, "is_timeless": 1, "category": c.name if c else None, "cat_color": c.color if c else None, "cat_icon": c.icon if c else None, "end_time": None, "google_event_id": t.google_event_id, "priority": t.priority} for t, c in rows]
 
 async def get_tasks_by_category(user_id: int, category_id: int):
     async with async_session() as session:
-        query = select(Task, Category.name.label("category_name")).outerjoin(Category, Task.category_id == Category.id).where(
+        query = select(Task, Category).outerjoin(Category, Task.category_id == Category.id).where(
             Task.user_id == user_id,
             Task.is_completed == 0,
             Task.category_id == category_id
         ).order_by(Task.priority.asc(), Task.is_timeless.asc(), Task.date_time.asc())
         
         rows = (await session.execute(query)).all()
-        return [{"id": t.id, "text": t.text, "date_time": t.date_time, "is_timeless": t.is_timeless, "category": cat_name, "is_recurring": t.is_recurring, "recurrence_rule": t.recurrence_rule, "end_time": t.end_time, "google_event_id": t.google_event_id, "priority": t.priority} for t, cat_name in rows]
+        return [{"id": t.id, "text": t.text, "date_time": t.date_time, "is_timeless": t.is_timeless, "category": c.name if c else None, "cat_color": c.color if c else None, "cat_icon": c.icon if c else None, "is_recurring": t.is_recurring, "recurrence_rule": t.recurrence_rule, "end_time": t.end_time, "google_event_id": t.google_event_id, "priority": t.priority} for t, c in rows]
 
 async def get_stats_for_digest(user_id: int, days: int) -> dict:
     tz_name = await get_user_timezone(user_id)
@@ -162,7 +171,20 @@ async def get_stats_for_digest(user_id: int, days: int) -> dict:
 async def get_user_stats(user_id: int):
     async with async_session() as session:
         user = await session.scalar(select(User).where(User.telegram_id == user_id))
-        return {"xp": user.xp, "level": user.level} if user else {"xp": 0, "level": 1}
+        return {
+            "xp": user.xp if user else 0, 
+            "level": user.level if user else 1,
+            "morning_time": user.morning_time if user else "09:00",
+            "evening_time": user.evening_time if user else "23:00"
+        }
+
+async def update_user_settings(user_id: int, morning_time: str, evening_time: str):
+    async with async_session() as session:
+        user = await session.scalar(select(User).where(User.telegram_id == user_id))
+        if user:
+            user.morning_time = morning_time
+            user.evening_time = evening_time
+            await session.commit()
 
 async def add_xp(user_id: int, amount: int):
     async with async_session() as session:

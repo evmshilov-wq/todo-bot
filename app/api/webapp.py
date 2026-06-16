@@ -45,6 +45,15 @@ async def api_me(request: web.Request):
     stats = await get_user_stats(user_id)
     return web.json_response(stats)
 
+@routes.put("/api/me")
+async def api_update_me(request: web.Request):
+    user_id = get_user_id(request)
+    if not user_id: return web.json_response({"error": "Unauthorized"}, status=401)
+    data = await request.json()
+    from app.database.requests import update_user_settings
+    await update_user_settings(user_id, data.get("morning_time", "09:00"), data.get("evening_time", "23:00"))
+    return web.json_response({"status": "ok"})
+
 @routes.get("/api/tasks")
 async def api_get_tasks(request: web.Request):
     user_id = get_user_id(request)
@@ -135,7 +144,17 @@ async def api_add_category(request: web.Request):
     if not user_id: return web.json_response({"error": "Unauthorized"}, status=401)
     data = await request.json()
     from app.database.requests import add_category_db
-    await add_category_db(user_id, data["name"])
+    await add_category_db(user_id, data["name"], data.get("color"), data.get("icon"))
+    return web.json_response({"status": "ok"})
+
+@routes.put("/api/categories/{category_id}")
+async def api_update_category(request: web.Request):
+    user_id = get_user_id(request)
+    if not user_id: return web.json_response({"error": "Unauthorized"}, status=401)
+    category_id = int(request.match_info["category_id"])
+    data = await request.json()
+    from app.database.requests import update_category_db
+    await update_category_db(category_id, data["name"], data.get("color"), data.get("icon"))
     return web.json_response({"status": "ok"})
 
 @routes.delete("/api/categories/{category_id}")

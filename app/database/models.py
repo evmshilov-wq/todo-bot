@@ -13,12 +13,16 @@ class User(Base):
     xp: Mapped[int] = mapped_column(Integer, default=0)
     level: Mapped[int] = mapped_column(Integer, default=1)
     google_token: Mapped[str] = mapped_column(String, nullable=True)
+    morning_time: Mapped[str] = mapped_column(String, default="09:00")
+    evening_time: Mapped[str] = mapped_column(String, default="23:00")
 
 class Category(Base):
     __tablename__ = 'categories'
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(BigInteger)
     name: Mapped[str] = mapped_column(String)
+    color: Mapped[str] = mapped_column(String, nullable=True)
+    icon: Mapped[str] = mapped_column(String, nullable=True)
 
 class Habit(Base):
     __tablename__ = 'habits'

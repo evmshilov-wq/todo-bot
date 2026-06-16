@@ -215,10 +215,14 @@ async def process_chat_voice(file_path: str, chat_history: list, current_tasks: 
         logging.error(f"Ошибка AI Voice Chat: {e}")
         return {"reply": "Прости, я не смог разобрать голосовое. Можешь повторить?", "tasks": [], "memories": []}
 
-async def generate_ai_digest(stats: dict, user_name: str) -> str:
+async def generate_ai_digest(stats: dict, user_name: str, custom_prompt: str = None) -> str:
     completed_str = "\n".join([f"- {t['text']} [{t['category']}]" for t in stats["completed"]]) or "Нет выполненных задач"
     pending_str = "\n".join([f"- [{t['priority']}] {t['text']} [{t['category']}]" for t in stats["pending"]]) or "Все задачи закрыты!"
-    prompt = f"""Ты суровый, но мотивирующий ИИ-коуч. Проанализируй задачи {user_name} за период {stats['period_days']} дней.
+    
+    if custom_prompt:
+        prompt = custom_prompt + f"\n\nДанные:\nВыполнено:\n{completed_str}\nОсталось:\n{pending_str}"
+    else:
+        prompt = f"""Ты суровый, но мотивирующий ИИ-коуч. Проанализируй задачи {user_name} за период {stats.get('period_days', 7)} дней.
 Выполнено:
 {completed_str}
 Осталось:

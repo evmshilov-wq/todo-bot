@@ -3,3 +3,5 @@ token.json
 venv/
 .DS_Store
 __pycache__/
+credentials.json
+token.json

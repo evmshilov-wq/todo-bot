@@ -46,9 +46,13 @@ const els = {
     newHabitName: document.getElementById('new-habit-name'),
     snoozeDate: document.getElementById('snooze-date'),
     editTaskText: document.getElementById('edit-task-text'),
-    manualTaskText: document.getElementById('manual-task-text'),
     manualTaskDate: document.getElementById('manual-task-date'),
     newCatName: document.getElementById('new-cat-name'),
+    newCatIcon: document.getElementById('new-cat-icon'),
+    newCatColor: document.getElementById('new-cat-color'),
+    editCatId: document.getElementById('edit-cat-id'),
+    settingsMorning: document.getElementById('settings-morning-time'),
+    settingsEvening: document.getElementById('settings-evening-time'),
 };
 
 let userStats = { xp: 0, level: 1 };
@@ -62,6 +66,7 @@ let editingNoteId = null;
 let editingMemoryId = null;
 
 async function initApp() {
+    loadTheme();
     const user = tg.initDataUnsafe?.user;
     els.userName.innerText = user?.first_name || 'Пользователь';
     
@@ -172,7 +177,32 @@ async function fetchStats() {
         if (!res.ok) return;
         userStats = await res.json();
         updateXPBar();
+        if (userStats.morning_time) els.settingsMorning.value = userStats.morning_time;
+        if (userStats.evening_time) els.settingsEvening.value = userStats.evening_time;
     } catch (e) { console.error(e); }
+}
+
+function setTheme(themeName) {
+    document.documentElement.setAttribute('data-theme', themeName);
+    localStorage.setItem('app-theme', themeName);
+}
+
+function loadTheme() {
+    const saved = localStorage.getItem('app-theme');
+    if (saved) setTheme(saved);
+}
+
+async function saveSettings() {
+    const morning = els.settingsMorning.value;
+    const evening = els.settingsEvening.value;
+    try {
+        await fetch('/api/me', {
+            method: 'PUT',
+            headers,
+            body: JSON.stringify({ morning_time: morning, evening_time: evening })
+        });
+        tg.HapticFeedback.notificationOccurred('success');
+    } catch(e) {}
 }
 
 async function fetchTasks() {
@@ -264,7 +294,11 @@ function renderTasksList(tasks, container, countEl) {
             <div class="item-content">
                 <div class="item-title">${t.text}</div>
                 <div class="item-meta">
-                    <span style="display:flex; align-items:center; gap:4px;">${getPriorityColor(t.priority)} ${t.category || 'Без категории'}</span>
+                    <span style="display:flex; align-items:center; gap:4px;">
+                        ${getPriorityColor(t.priority)} 
+                        ${t.cat_color ? `<span style="display:inline-block; width:8px; height:8px; border-radius:50%; background-color:${t.cat_color};"></span>` : ''}
+                        ${t.cat_icon ? t.cat_icon + ' ' : ''}${t.category || 'Без категории'}
+                    </span>
                     ${t.date_time && !t.is_timeless ? `<span style="display:flex; align-items:center; gap:4px;"><i data-lucide="clock" style="width:12px;height:12px;"></i> ${t.date_time.slice(11, 16)}</span>` : ''}
                 </div>
             </div>
@@ -307,8 +341,18 @@ function renderCategories(categories) {
     categories.forEach(c => {
         const div = document.createElement('div');
         div.className = 'cat-tag';
+        if (c.color) {
+            div.style.backgroundColor = c.color;
+            div.style.color = '#fff';
+            div.style.borderColor = c.color;
+        }
+        div.style.cursor = 'pointer';
+        div.onclick = (e) => {
+            if (e.target.closest('.cat-delete')) return;
+            editCategory(c.id, c.name, c.icon, c.color);
+        };
         div.innerHTML = `
-            ${c.name}
+            ${c.icon ? c.icon + ' ' : ''}${c.name}
             <span class="cat-delete" onclick="deleteCategory(${c.id})"><i data-lucide="x" style="width:14px;height:14px;"></i></span>
         `;
         els.categoriesList.appendChild(div);
@@ -486,13 +530,40 @@ async function submitNewHabit() {
     } catch(e) { console.error(e); }
 }
 
-async function submitNewCategory() {
+function showAddCategoryModal() {
+    document.getElementById('cat-modal-title').innerText = 'Новая категория';
+    els.editCatId.value = '';
+    els.newCatName.value = '';
+    els.newCatIcon.value = '';
+    els.newCatColor.value = '#ffffff';
+    showModal('add-cat-modal');
+}
+
+function editCategory(id, name, icon, color) {
+    document.getElementById('cat-modal-title').innerText = 'Редактировать категорию';
+    els.editCatId.value = id;
+    els.newCatName.value = name || '';
+    els.newCatIcon.value = icon || '';
+    els.newCatColor.value = color || '#ffffff';
+    showModal('add-cat-modal');
+}
+
+async function submitCategory() {
     const name = els.newCatName.value.trim();
+    const icon = els.newCatIcon.value.trim();
+    const color = els.newCatColor.value;
+    const id = els.editCatId.value;
     if (!name) return;
+    
+    const body = JSON.stringify({ name, icon, color });
+    
     try {
-        await fetch('/api/categories', { method: 'POST', headers, body: JSON.stringify({ name }) });
+        if (id) {
+            await fetch(`/api/categories/${id}`, { method: 'PUT', headers, body });
+        } else {
+            await fetch('/api/categories', { method: 'POST', headers, body });
+        }
         hideModal('add-cat-modal');
-        els.newCatName.value = '';
         fetchCategories();
     } catch(e) { console.error(e); }
 }
