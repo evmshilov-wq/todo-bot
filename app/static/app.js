@@ -185,6 +185,14 @@ async function fetchStats() {
 function setTheme(themeName) {
     document.documentElement.setAttribute('data-theme', themeName);
     localStorage.setItem('app-theme', themeName);
+    
+    document.querySelectorAll('.theme-btn').forEach(btn => {
+        if (btn.dataset.themeVal === themeName) {
+            btn.classList.add('primary');
+        } else {
+            btn.classList.remove('primary');
+        }
+    });
 }
 
 function loadTheme() {
@@ -755,7 +763,7 @@ function setupTabs() {
             const targetId = item.dataset.target;
             document.getElementById(targetId).classList.add('active');
             if (targetId === 'tab-ai') {
-                setTimeout(scrollToBottom, 100);
+                setTimeout(scrollToBottom, 300);
             }
             tg.HapticFeedback.impactOccurred('light');
         });
