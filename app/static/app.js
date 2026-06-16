@@ -547,7 +547,11 @@ async function submitSnooze() {
         
         // Run fetch asynchronously in background
         fetch(`/api/tasks/${snoozingTaskId}`, { method: 'PUT', headers, body: JSON.stringify({ date_time: `${dateStr} 12:00`, is_timeless: 1 }) })
-            .then(() => {
+            .then(async res => {
+                if (!res.ok) {
+                    const data = await res.json();
+                    tg.showAlert(`Ошибка сохранения: ${data.error || 'Неизвестная ошибка'}`);
+                }
                 fetchTasks();
                 fetchNoDateTasks();
             });

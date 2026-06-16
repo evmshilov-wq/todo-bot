@@ -77,16 +77,31 @@ async def api_create_task(request: web.Request):
 
 @routes.put("/api/tasks/{task_id}")
 async def api_update_task(request: web.Request):
-    user_id = get_user_id(request)
-    if not user_id: return web.json_response({"error": "Unauthorized"}, status=401)
-    task_id = int(request.match_info["task_id"])
-    data = await request.json()
-    from app.database.requests import update_task_text_db, update_task_datetime_db
-    if "text" in data:
-        await update_task_text_db(task_id, data["text"])
-    if "date_time" in data:
-        await update_task_datetime_db(task_id, data["date_time"], data.get("is_timeless", 1), data.get("google_event_id"))
-    return web.json_response({"status": "ok"})
+    try:
+        user_id = get_user_id(request)
+        if not user_id: return web.json_response({"error": "Unauthorized"}, status=401)
+        task_id = int(request.match_info["task_id"])
+        data = await request.json()
+        from app.database.requests import update_task_text_db, update_task_datetime_db, get_task_by_id, get_user_timezone
+        if "text" in data:
+            await update_task_text_db(task_id, data["text"])
+        if "date_time" in data:
+            task = await get_task_by_id(task_id)
+            new_google_id = data.get("google_event_id", task.get("google_event_id") if task else None)
+            await update_task_datetime_db(task_id, data["date_time"], data.get("is_timeless", 1), new_google_id)
+            if new_google_id and task:
+                try:
+                    from app.services.google_cal import update_event_in_google
+                    tz = await get_user_timezone(user_id)
+                    await update_event_in_google(user_id, new_google_id, task["text"], data["date_time"], None, data.get("is_timeless", 1) == 1, tz)
+                except Exception as e:
+                    import logging
+                    logging.error(f"Google update failed: {str(e)}")
+        return web.json_response({"status": "ok"})
+    except Exception as e:
+        import traceback
+        err_str = traceback.format_exc()
+        return web.json_response({"error": str(e), "traceback": err_str}, status=500)
 
 @routes.delete("/api/tasks/{task_id}")
 async def api_delete_task(request: web.Request):
