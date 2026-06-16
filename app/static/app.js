@@ -512,7 +512,10 @@ async function submitEditTask() {
 async function submitSnooze() {
     if (!snoozingTaskId) return;
     const dateStr = els.snoozeDate.value;
-    if (!dateStr) return;
+    if (!dateStr) {
+        tg.showAlert('Пожалуйста, выберите дату для переноса!');
+        return;
+    }
     
     // Optimistic UI: Remove card and close modal immediately
     const actionBtns = document.querySelectorAll('.action-btn.snooze');
