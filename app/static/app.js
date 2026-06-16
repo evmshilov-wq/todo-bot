@@ -186,13 +186,8 @@ function setTheme(themeName) {
     document.documentElement.setAttribute('data-theme', themeName);
     localStorage.setItem('app-theme', themeName);
     
-    document.querySelectorAll('.theme-btn').forEach(btn => {
-        if (btn.dataset.themeVal === themeName) {
-            btn.classList.add('primary');
-        } else {
-            btn.classList.remove('primary');
-        }
-    });
+    const selector = document.getElementById('theme-selector');
+    if (selector) selector.value = themeName;
 }
 
 function loadTheme() {
@@ -213,18 +208,20 @@ async function saveSettings() {
     } catch(e) {}
 }
 
-async function fetchTasks() {
+async function fetchTasks(forceRefresh = false) {
     try {
-        const res = await fetch('/api/tasks', { headers });
+        const url = forceRefresh ? `/api/tasks?_t=${Date.now()}` : '/api/tasks';
+        const res = await fetch(url, { headers });
         if (!res.ok) return;
         const data = await res.json();
         renderTasksList(data.tasks, els.tasksList, els.tasksCount);
     } catch (e) { console.error(e); }
 }
 
-async function fetchNoDateTasks() {
+async function fetchNoDateTasks(forceRefresh = false) {
     try {
-        const res = await fetch('/api/tasks/nodate', { headers });
+        const url = forceRefresh ? `/api/tasks/nodate?_t=${Date.now()}` : '/api/tasks/nodate';
+        const res = await fetch(url, { headers });
         if (!res.ok) return;
         const data = await res.json();
         renderTasksList(data.tasks, els.nodateTasksList, null);
@@ -631,8 +628,9 @@ async function submitSnooze() {
                     const data = await res.json();
                     tg.showAlert(`Ошибка сохранения: ${data.error || 'Неизвестная ошибка'}`);
                 }
-                fetchTasks();
-                fetchNoDateTasks();
+                // Force a cache-busting fetch by passing a unique timestamp
+                fetchTasks(true);
+                fetchNoDateTasks(true);
             });
     } catch(e) { console.error(e); }
 }
@@ -764,6 +762,9 @@ function setupTabs() {
             document.getElementById(targetId).classList.add('active');
             if (targetId === 'tab-ai') {
                 setTimeout(scrollToBottom, 300);
+            }
+            if (targetId === 'tab-brain') {
+                setTimeout(initGraph, 100);
             }
             tg.HapticFeedback.impactOccurred('light');
         });

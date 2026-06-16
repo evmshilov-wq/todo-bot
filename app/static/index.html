@@ -106,7 +106,7 @@
                     <button class="glass-btn" onclick="switchBrainTab('memories')" id="btn-tab-memories">Факты</button>
                 </div>
 
-                <div id="brain-graph" class="brain-content">
+                <div id="brain-graph" class="brain-content" style="margin-bottom: 24px;">
                     <div id="3d-graph" style="width: 100%; height: 350px; border-radius: 24px; overflow: hidden; background: var(--input-bg); border: 1px solid var(--glass-border);"></div>
                 </div>
 
@@ -127,31 +127,32 @@
                     <h3>Настройки</h3>
                 </div>
                 
-                <!-- Оформление -->
-                <div class="glass-panel" style="margin-bottom: 16px;">
+                <div style="margin-bottom: 24px; margin-top: 24px;">
                     <h4>Темы оформления</h4>
-                    <div style="display:flex; gap:8px; margin-top:12px; overflow-x:auto; padding-bottom:4px;">
-                        <button class="glass-btn theme-btn" data-theme-val="dark" style="flex:0 0 auto; padding: 8px 16px; font-size:14px;" onclick="setTheme('dark')">🌌 Dark</button>
-                        <button class="glass-btn theme-btn" data-theme-val="amoled" style="flex:0 0 auto; padding: 8px 16px; font-size:14px;" onclick="setTheme('amoled')">🌑 AMOLED</button>
-                        <button class="glass-btn theme-btn" data-theme-val="light" style="flex:0 0 auto; padding: 8px 16px; font-size:14px;" onclick="setTheme('light')">☀️ Light</button>
-                        <button class="glass-btn theme-btn" data-theme-val="neon-pink" style="flex:0 0 auto; padding: 8px 16px; font-size:14px;" onclick="setTheme('neon-pink')">🌸 Neon</button>
+                    <div style="margin-top:12px;">
+                        <select id="theme-selector" class="glass-input" style="width: 100%; padding: 12px; font-size: 15px;" onchange="setTheme(this.value)">
+                            <option value="dark">🌌 Dark</option>
+                            <option value="amoled">🌑 AMOLED</option>
+                            <option value="light">☀️ Light</option>
+                            <option value="neon-pink">🌸 Neon</option>
+                        </select>
                     </div>
                 </div>
 
-                <!-- Дайджесты -->
-                <div class="glass-panel" style="margin-bottom: 16px;">
+                <!-- Уведомления и Дайджесты -->
+                <div style="margin-bottom: 24px;">
                     <h4>Уведомления и Дайджесты</h4>
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px;">
                         <span style="font-size:14px;">Утренний план</span>
-                        <input type="time" id="settings-morning-time" class="glass-input" style="width:100px; padding:6px; margin:0;" onchange="saveSettings()">
+                        <input type="time" id="settings-morning-time" class="glass-input" style="width:100px; padding:6px; margin:0;" value="09:00" onchange="saveSettings()">
                     </div>
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px;">
                         <span style="font-size:14px;">Вечерние итоги</span>
-                        <input type="time" id="settings-evening-time" class="glass-input" style="width:100px; padding:6px; margin:0;" onchange="saveSettings()">
+                        <input type="time" id="settings-evening-time" class="glass-input" style="width:100px; padding:6px; margin:0;" value="23:00" onchange="saveSettings()">
                     </div>
                 </div>
 
-                <div class="glass-panel" style="margin-bottom: 16px;">
+                <div style="margin-bottom: 24px;">
                     <div style="display:flex; justify-content:space-between; align-items:center; gap: 12px;">
                         <div style="flex: 1; min-width: 0;">
                             <h4 style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Google Календарь</h4>
