@@ -589,8 +589,11 @@ async def api_auth_google_callback(request: web.Request):
     if not flow: return web.Response(text="Server config error", status=500)
     
     try:
-        # fetch_token requires the full URL the user was redirected to
-        flow.fetch_token(authorization_response=str(request.url))
+        import os
+        os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
+        # fetch_token requires the full URL the user was redirected to. Replace http with https due to proxy
+        auth_response = str(request.url).replace('http://', 'https://')
+        flow.fetch_token(authorization_response=auth_response)
         creds = flow.credentials
         
         from app.database.requests import update_google_token
