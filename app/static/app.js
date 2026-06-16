@@ -792,10 +792,6 @@ let Graph = null;
 async function initGraph(forceRefresh = false) {
     if (Graph && !forceRefresh) return;
     try {
-        const headers = {
-            'Content-Type': 'application/json',
-            'Authorization': 'twa ' + (window.Telegram.WebApp.initData || '')
-        };
         const res = await fetch('/api/graph', { headers });
         if (!res.ok) return;
         const gData = await res.json();

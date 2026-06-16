@@ -550,7 +550,8 @@ async def api_auth_google(request: web.Request):
     
     from app.services.google_cal import get_oauth_flow
     # The redirect URI must EXACTLY match what's in Google Cloud Console
-    redirect_uri = f"{request.scheme}://{request.host}/api/auth/google/callback"
+    from app.config import WEBHOOK_URL
+    redirect_uri = f"{WEBHOOK_URL}/api/auth/google/callback"
     flow = get_oauth_flow(redirect_uri)
     if not flow:
         return web.json_response({"error": "Google API credentials not configured on server"}, status=500)
@@ -582,7 +583,8 @@ async def api_auth_google_callback(request: web.Request):
     if not user_id: return web.Response(text="User ID missing", status=400)
     
     from app.services.google_cal import get_oauth_flow
-    redirect_uri = f"{request.scheme}://{request.host}/api/auth/google/callback"
+    from app.config import WEBHOOK_URL
+    redirect_uri = f"{WEBHOOK_URL}/api/auth/google/callback"
     flow = get_oauth_flow(redirect_uri)
     if not flow: return web.Response(text="Server config error", status=500)
     
