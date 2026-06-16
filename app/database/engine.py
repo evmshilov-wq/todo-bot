@@ -15,6 +15,10 @@ async def init_db():
         except Exception:
             pass
         try:
+            await conn.execute(text("ALTER TABLE users ADD COLUMN google_token VARCHAR"))
+        except Exception:
+            pass
+        try:
             await conn.execute(text("ALTER TABLE memories ADD COLUMN embedding TEXT"))
         except Exception:
             pass
