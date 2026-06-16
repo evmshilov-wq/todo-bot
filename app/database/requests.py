@@ -25,6 +25,16 @@ async def get_user_timezone(telegram_id: int) -> str:
         user = await session.scalar(select(User).where(User.telegram_id == telegram_id))
         return user.timezone if user else DEFAULT_TZ
 
+async def get_google_token(telegram_id: int) -> str | None:
+    async with async_session() as session:
+        user = await session.scalar(select(User).where(User.telegram_id == telegram_id))
+        return user.google_token if user else None
+
+async def update_google_token(telegram_id: int, token_json: str | None):
+    async with async_session() as session:
+        await session.execute(update(User).where(User.telegram_id == telegram_id).values(google_token=token_json))
+        await session.commit()
+
 async def get_user_categories(telegram_id: int):
     async with async_session() as session:
         cats = await session.scalars(select(Category).where(Category.user_id == telegram_id))

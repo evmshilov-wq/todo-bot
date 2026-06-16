@@ -12,6 +12,7 @@ class User(Base):
     timezone: Mapped[str] = mapped_column(String, default="Europe/Moscow")
     xp: Mapped[int] = mapped_column(Integer, default=0)
     level: Mapped[int] = mapped_column(Integer, default=1)
+    google_token: Mapped[str] = mapped_column(String, nullable=True)
 
 class Category(Base):
     __tablename__ = 'categories'

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>AI ToDo & Habits</title>
-    <link rel="stylesheet" href="/static/style.css?v=2">
+    <link rel="stylesheet" href="/static/style.css?v=3">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -126,12 +126,21 @@
                 <div class="section-header">
                     <h3>Настройки</h3>
                 </div>
+                <div class="glass-panel" style="margin-bottom: 16px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <h4>Google Календарь</h4>
+                            <p style="font-size:12px; color:var(--text-muted); margin-top:4px;">Экспорт задач в календарь</p>
+                        </div>
+                        <button class="glass-btn primary" style="padding: 8px 16px; font-size: 14px; width: auto;" onclick="connectGoogleCalendar()">Подключить</button>
+                    </div>
+                </div>
                 <div class="glass-panel">
                     <div style="display:flex; gap:12px; align-items:center;">
                         <h4>Категории задач</h4>
                         <button class="icon-btn" onclick="showAddCategoryModal()"><i data-lucide="plus"></i></button>
                     </div>
-                    <div id="categories-list" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+                    <div id="categories-list" style="display:flex; flex-wrap:wrap; gap:8px; margin-top:12px;"></div>
                 </div>
             </section>
         </main>
@@ -244,6 +253,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.360.0/dist/umd/lucide.min.js"></script>
-    <script src="/static/app.js?v=2"></script>
+    <script src="/static/app.js?v=3"></script>
 </body>
 </html>

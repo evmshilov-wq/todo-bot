@@ -232,7 +232,7 @@ async def api_ai_text(request: web.Request):
         if action == "add":
             cat_id = next((c["id"] for c in categories if c["name"] == t.get("category")), None)
             is_tl = t.get("is_timeless", True)
-            g_id = add_event_to_google(t.get("task_text", ""), t.get("date_time"), t.get("end_time"), is_tl, user_tz)
+            g_id = await add_event_to_google(user_id, t.get("task_text", ""), t.get("date_time"), t.get("end_time"), is_tl, user_tz)
             await add_task(user_id, t.get("task_text", ""), cat_id, t.get("date_time"), 1 if is_tl else 0, 0, None, t.get("end_time"), g_id, t.get("priority", "B"))
         elif action == "edit" and t.get("task_id"):
             if t.get("task_text"): await update_task_text_db(t["task_id"], t["task_text"])
@@ -321,7 +321,7 @@ async def api_ai_voice(request: web.Request):
         if action == "add":
             cat_id = next((c["id"] for c in categories if c["name"] == t.get("category")), None)
             is_tl = t.get("is_timeless", True)
-            g_id = add_event_to_google(t.get("task_text", ""), t.get("date_time"), t.get("end_time"), is_tl, user_tz)
+            g_id = await add_event_to_google(user_id, t.get("task_text", ""), t.get("date_time"), t.get("end_time"), is_tl, user_tz)
             await add_task(user_id, t.get("task_text", ""), cat_id, t.get("date_time"), 1 if is_tl else 0, 0, None, t.get("end_time"), g_id, t.get("priority", "B"))
         elif action == "edit" and t.get("task_id"):
             if t.get("task_text"): await update_task_text_db(t["task_id"], t["task_text"])
@@ -502,3 +502,81 @@ async def api_get_graph(request: web.Request):
                 })
         
     return web.json_response({"nodes": nodes, "links": links})
+
+@routes.get("/api/auth/google")
+async def api_auth_google(request: web.Request):
+    user_id = get_user_id(request)
+    # If not in headers, maybe it was passed in query string for oauth start
+    if not user_id:
+        init_data = request.query.get("initData")
+        if init_data:
+            user_data = validate_webapp_data(init_data)
+            if user_data: user_id = user_data.get("id")
+    if not user_id: return web.json_response({"error": "Unauthorized"}, status=401)
+    
+    from app.services.google_cal import get_oauth_flow
+    # The redirect URI must EXACTLY match what's in Google Cloud Console
+    redirect_uri = f"{request.scheme}://{request.host}/api/auth/google/callback"
+    flow = get_oauth_flow(redirect_uri)
+    if not flow:
+        return web.json_response({"error": "Google API credentials not configured on server"}, status=500)
+    
+    auth_url, state = flow.authorization_url(prompt='consent', access_type='offline')
+    
+    # Store state and user_id temporarily, we can use a simple dict in memory or pass user_id in state
+    import base64
+    state_payload = base64.urlsafe_b64encode(json.dumps({"user_id": user_id, "state": state}).encode()).decode()
+    
+    # Re-generate auth url with our custom state payload
+    auth_url, _ = flow.authorization_url(prompt='consent', access_type='offline', state=state_payload)
+    
+    return web.json_response({"url": auth_url})
+
+@routes.get("/api/auth/google/callback")
+async def api_auth_google_callback(request: web.Request):
+    state_payload = request.query.get("state")
+    if not state_payload:
+        return web.Response(text="Missing state", status=400)
+        
+    import base64
+    try:
+        state_data = json.loads(base64.urlsafe_b64decode(state_payload).decode())
+        user_id = state_data.get("user_id")
+    except Exception:
+        return web.Response(text="Invalid state", status=400)
+        
+    if not user_id: return web.Response(text="User ID missing", status=400)
+    
+    from app.services.google_cal import get_oauth_flow
+    redirect_uri = f"{request.scheme}://{request.host}/api/auth/google/callback"
+    flow = get_oauth_flow(redirect_uri)
+    if not flow: return web.Response(text="Server config error", status=500)
+    
+    try:
+        # fetch_token requires the full URL the user was redirected to
+        flow.fetch_token(authorization_response=str(request.url))
+        creds = flow.credentials
+        
+        from app.database.requests import update_google_token
+        await update_google_token(user_id, creds.to_json())
+        
+        # Return a simple HTML that closes the Telegram Web App or shows success
+        html = """
+        <html><body>
+        <h2>Google Календарь успешно подключен!</h2>
+        <p>Вы можете закрыть это окно и вернуться в приложение.</p>
+        <script>
+            setTimeout(() => {
+                if (window.Telegram && window.Telegram.WebApp) {
+                    window.Telegram.WebApp.close();
+                } else {
+                    window.close();
+                }
+            }, 2000);
+        </script>
+        </body></html>
+        """
+        return web.Response(text=html, content_type="text/html")
+    except Exception as e:
+        return web.Response(text=f"Auth error: {str(e)}", status=400)
+

@@ -359,22 +359,56 @@ function generateCalendar(year, month) {
     }
 }
 
+// === GOOGLE OAUTH ===
+async function connectGoogleCalendar() {
+    try {
+        const response = await fetch(`/api/auth/google?initData=${encodeURIComponent(tg.initData)}`, {
+            headers: { 'Authorization': `twa ${tg.initData}` }
+        });
+        const data = await response.json();
+        if (data.url) {
+            // Open the OAuth link in the Telegram browser
+            tg.openLink(data.url);
+        } else {
+            alert("Ошибка получения ссылки: " + (data.error || "Неизвестная ошибка"));
+        }
+    } catch (e) {
+        console.error(e);
+        alert("Ошибка сети при подключении к Google.");
+    }
+}
+
+// === INITIALIZATION ===
+
 // === API ACTIONS ===
 
 async function completeTask(id, element) {
     const card = element.closest('.item-card');
     card.classList.add('completed');
+    // Optimistic UI update: hide quickly
+    setTimeout(() => {
+        card.style.transition = 'opacity 0.3s, transform 0.3s, height 0.3s, margin 0.3s';
+        card.style.opacity = '0';
+        card.style.transform = 'scale(0.9)';
+        card.style.height = '0px';
+        card.style.margin = '0px';
+        card.style.padding = '0px';
+        card.style.overflow = 'hidden';
+        setTimeout(() => card.remove(), 300);
+    }, 400); // Wait 400ms to show the checkmark
+
     try {
-        const res = await fetch(`/api/tasks/${id}/complete`, { method: 'POST', headers });
-        if (res.ok) {
-            const data = await res.json();
-            userStats.xp += data.xp_earned;
-            userStats.level = Math.floor(userStats.xp / 100) + 1;
-            updateXPBar();
-            setTimeout(() => card.remove(), 500);
-            tg.HapticFeedback.notificationOccurred('success');
-        } else { card.classList.remove('completed'); }
-    } catch(e) { card.classList.remove('completed'); }
+        fetch(`/api/tasks/${id}/complete`, { method: 'POST', headers })
+            .then(res => res.ok ? res.json() : null)
+            .then(data => {
+                if (data) {
+                    userStats.xp += data.xp_earned;
+                    userStats.level = Math.floor(userStats.xp / 100) + 1;
+                    updateXPBar();
+                    tg.HapticFeedback.notificationOccurred('success');
+                }
+            });
+    } catch(e) { console.error(e); }
 }
 
 async function completeHabit(id, element, isCompleted) {
@@ -399,14 +433,19 @@ async function completeHabit(id, element, isCompleted) {
 
 async function deleteTask(id, element) {
     const card = element.closest('.item-card');
-    card.style.opacity = '0.3';
+    card.style.transition = 'opacity 0.3s, transform 0.3s, height 0.3s, margin 0.3s';
+    card.style.opacity = '0';
+    card.style.transform = 'scale(0.9)';
+    card.style.height = '0px';
+    card.style.margin = '0px';
+    card.style.padding = '0px';
+    card.style.overflow = 'hidden';
+    setTimeout(() => card.remove(), 300);
+    tg.HapticFeedback.impactOccurred('medium');
+
     try {
-        const res = await fetch(`/api/tasks/${id}`, { method: 'DELETE', headers });
-        if (res.ok) {
-            card.remove();
-            tg.HapticFeedback.impactOccurred('medium');
-        } else { card.style.opacity = '1'; }
-    } catch(e) { card.style.opacity = '1'; }
+        fetch(`/api/tasks/${id}`, { method: 'DELETE', headers });
+    } catch(e) { console.error(e); }
 }
 
 async function deleteCategory(id) {
@@ -474,16 +513,41 @@ async function submitSnooze() {
     if (!snoozingTaskId) return;
     const dateStr = els.snoozeDate.value;
     if (!dateStr) return;
+    
+    // Optimistic UI: Remove card and close modal immediately
+    const actionBtns = document.querySelectorAll('.action-btn.snooze');
+    let targetCard = null;
+    actionBtns.forEach(btn => {
+        if (btn.getAttribute('onclick').includes(`openSnoozeTask(${snoozingTaskId})`)) {
+            targetCard = btn.closest('.item-card');
+        }
+    });
+    
+    if (targetCard) {
+        targetCard.style.transition = 'opacity 0.3s, transform 0.3s, height 0.3s, margin 0.3s';
+        targetCard.style.opacity = '0';
+        targetCard.style.transform = 'scale(0.9)';
+        targetCard.style.height = '0px';
+        targetCard.style.margin = '0px';
+        targetCard.style.padding = '0px';
+        targetCard.style.overflow = 'hidden';
+        setTimeout(() => targetCard.remove(), 300);
+    }
+
+    hideModal('snooze-modal');
+    tg.HapticFeedback.notificationOccurred('warning');
+
     try {
-        // Penalty for snoozing
         userStats.xp = Math.max(0, userStats.xp - 5);
         userStats.level = Math.floor(userStats.xp / 100) + 1;
         updateXPBar();
-        await fetch(`/api/tasks/${snoozingTaskId}`, { method: 'PUT', headers, body: JSON.stringify({ date_time: `${dateStr} 12:00`, is_timeless: 1 }) });
-        hideModal('snooze-modal');
-        fetchTasks();
-        fetchNoDateTasks();
-        tg.HapticFeedback.notificationOccurred('warning');
+        
+        // Run fetch asynchronously in background
+        fetch(`/api/tasks/${snoozingTaskId}`, { method: 'PUT', headers, body: JSON.stringify({ date_time: `${dateStr} 12:00`, is_timeless: 1 }) })
+            .then(() => {
+                fetchTasks();
+                fetchNoDateTasks();
+            });
     } catch(e) { console.error(e); }
 }
 
