@@ -30,20 +30,19 @@ async def process_notifications():
         
         # Check morning digest
         if user.morning_time and current_time_str == user.morning_time:
-            tasks = await get_tasks_for_today(user.telegram_id)
-            if tasks:
-                try:
-                    prompt = "Составь короткий бодрящий утренний план на сегодня. Будь краток и конструктивен, без форматирования."
-                    # For morning digest we don't necessarily have stats, but we can pass tasks as pending
-                    digest = await generate_ai_digest({"completed": [], "pending": tasks}, "Пользователь", custom_prompt=prompt)
+            try:
+                tasks = await get_tasks_for_today(user.telegram_id)
+                if tasks:
+                    tasks_list_str = "\n".join([f"• {t['text']} {'(Без времени)' if t['is_timeless'] else (t['date_time'][11:16] if t['date_time'] else '')}" for t in tasks])
+                    digest = f"Твой план на день:\n\n{tasks_list_str}\n\nХорошего и продуктивного дня! 🚀"
                     await bot_instance.send_message(user.telegram_id, f"🌅 Доброе утро!\n\n{digest}")
-                except Exception as e:
-                    logging.error(f"Failed to send morning digest: {e}")
+            except Exception as e:
+                logging.error(f"Failed to send morning digest: {e}")
                     
         # Check evening digest
         if user.evening_time and current_time_str == user.evening_time:
-            stats = await get_stats_for_digest(user.telegram_id, days=1)
             try:
+                stats = await get_stats_for_digest(user.telegram_id, days=1)
                 prompt = "Подведи вечерние итоги за сегодняшний день. Похвали за выполненное и напомни про невыполненное. Будь краток и конструктивен, без форматирования."
                 digest = await generate_ai_digest(stats, "Пользователь", custom_prompt=prompt)
                 await bot_instance.send_message(user.telegram_id, f"🌙 Итоги дня:\n\n{digest}")

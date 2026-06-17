@@ -93,11 +93,11 @@ async def api_update_task(request: web.Request):
         data = await request.json()
         from app.database.requests import update_task_text_db, update_task_datetime_db, get_task_by_id, get_user_timezone
         if "text" in data:
-            await update_task_text_db(task_id, data["text"])
+            await update_task_text_db(user_id, task_id, data["text"])
         if "date_time" in data:
-            task = await get_task_by_id(task_id)
+            task = await get_task_by_id(user_id, task_id)
             new_google_id = data.get("google_event_id", task.get("google_event_id") if task else None)
-            await update_task_datetime_db(task_id, data["date_time"], data.get("is_timeless", 1), new_google_id)
+            await update_task_datetime_db(user_id, task_id, data["date_time"], data.get("is_timeless", 1), new_google_id)
             if new_google_id and task:
                 try:
                     from app.services.google_cal import update_event_in_google
@@ -118,7 +118,7 @@ async def api_delete_task(request: web.Request):
     if not user_id: return web.json_response({"error": "Unauthorized"}, status=401)
     task_id = int(request.match_info["task_id"])
     from app.database.requests import delete_task_db
-    await delete_task_db(task_id)
+    await delete_task_db(user_id, task_id)
     return web.json_response({"status": "ok"})
 
 @routes.get("/api/categories")
@@ -154,7 +154,7 @@ async def api_update_category(request: web.Request):
     category_id = int(request.match_info["category_id"])
     data = await request.json()
     from app.database.requests import update_category_db
-    await update_category_db(category_id, data["name"], data.get("color"), data.get("icon"))
+    await update_category_db(user_id, category_id, data["name"], data.get("color"), data.get("icon"))
     return web.json_response({"status": "ok"})
 
 @routes.delete("/api/categories/{category_id}")
@@ -163,7 +163,7 @@ async def api_delete_category(request: web.Request):
     if not user_id: return web.json_response({"error": "Unauthorized"}, status=401)
     category_id = int(request.match_info["category_id"])
     from app.database.requests import delete_category_db
-    await delete_category_db(category_id)
+    await delete_category_db(user_id, category_id)
     return web.json_response({"status": "ok"})
 
 @routes.get("/api/analytics")
@@ -182,7 +182,7 @@ async def api_complete_task(request: web.Request):
     user_id = get_user_id(request)
     if not user_id: return web.json_response({"error": "Unauthorized"}, status=401)
     task_id = int(request.match_info["task_id"])
-    await complete_task_db(task_id)
+    await complete_task_db(user_id, task_id)
     return web.json_response({"status": "ok", "xp_earned": 10})
 
 @routes.get("/api/habits")
@@ -209,7 +209,7 @@ async def api_complete_habit(request: web.Request):
     if not user_id: return web.json_response({"error": "Unauthorized"}, status=401)
     habit_id = int(request.match_info["habit_id"])
     today = datetime.now().date()
-    success = await complete_habit(habit_id, today)
+    success = await complete_habit(user_id, habit_id, today)
     if success:
         from app.database.requests import add_xp
         await add_xp(user_id, 15)
@@ -269,11 +269,11 @@ async def api_ai_text(request: web.Request):
             g_id = await add_event_to_google(user_id, t.get("task_text", ""), t.get("date_time"), t.get("end_time"), is_tl, user_tz)
             await add_task(user_id, t.get("task_text", ""), cat_id, t.get("date_time"), 1 if is_tl else 0, 0, None, t.get("end_time"), g_id, t.get("priority", "B"))
         elif action == "edit" and t.get("task_id"):
-            if t.get("task_text"): await update_task_text_db(t["task_id"], t["task_text"])
+            if t.get("task_text"): await update_task_text_db(user_id, t["task_id"], t["task_text"])
             if t.get("date_time") or t.get("is_timeless") is not None:
-                await update_task_datetime_db(t["task_id"], t.get("date_time"), 1 if t.get("is_timeless", True) else 0, None)
+                await update_task_datetime_db(user_id, t["task_id"], t.get("date_time"), 1 if t.get("is_timeless", True) else 0, None)
         elif action == "delete" and t.get("task_id"):
-            await delete_task_db(t["task_id"])
+            await delete_task_db(user_id, t["task_id"])
             
     for m in mutations["memories"]:
         action = m.get("action")
@@ -281,7 +281,7 @@ async def api_ai_text(request: web.Request):
             vec = get_embedding(m["fact_text"])
             await add_memory(user_id, m["fact_text"], json.dumps(vec) if vec else None)
         elif action == "delete" and m.get("memory_id"):
-            await delete_memory_db(m["memory_id"])
+            await delete_memory_db(user_id, m["memory_id"])
             
     for n in mutations["notes"]:
         action = n.get("action")
@@ -290,9 +290,9 @@ async def api_ai_text(request: web.Request):
             await add_note(user_id, n["title"], n["content"], n.get("tags"), json.dumps(vec) if vec else None)
         elif action == "edit" and n.get("note_id"):
             vec = get_embedding(n.get("title", "") + " " + n.get("content", ""))
-            await update_note_db(n["note_id"], n.get("title"), n.get("content"), n.get("tags"), json.dumps(vec) if vec else None)
+            await update_note_db(user_id, n["note_id"], n.get("title"), n.get("content"), n.get("tags"), json.dumps(vec) if vec else None)
         elif action == "delete" and n.get("note_id"):
-            await delete_note_db(n["note_id"])
+            await delete_note_db(user_id, n["note_id"])
 
     return web.json_response({"status": "ok", "reply": reply_text, "mutations": mutations})
 
@@ -358,11 +358,11 @@ async def api_ai_voice(request: web.Request):
             g_id = await add_event_to_google(user_id, t.get("task_text", ""), t.get("date_time"), t.get("end_time"), is_tl, user_tz)
             await add_task(user_id, t.get("task_text", ""), cat_id, t.get("date_time"), 1 if is_tl else 0, 0, None, t.get("end_time"), g_id, t.get("priority", "B"))
         elif action == "edit" and t.get("task_id"):
-            if t.get("task_text"): await update_task_text_db(t["task_id"], t["task_text"])
+            if t.get("task_text"): await update_task_text_db(user_id, t["task_id"], t["task_text"])
             if t.get("date_time") or t.get("is_timeless") is not None:
-                await update_task_datetime_db(t["task_id"], t.get("date_time"), 1 if t.get("is_timeless", True) else 0, None)
+                await update_task_datetime_db(user_id, t["task_id"], t.get("date_time"), 1 if t.get("is_timeless", True) else 0, None)
         elif action == "delete" and t.get("task_id"):
-            await delete_task_db(t["task_id"])
+            await delete_task_db(user_id, t["task_id"])
             
     for m in mutations["memories"]:
         action = m.get("action")
@@ -370,7 +370,7 @@ async def api_ai_voice(request: web.Request):
             vec = get_embedding(m["fact_text"])
             await add_memory(user_id, m["fact_text"], json.dumps(vec) if vec else None)
         elif action == "delete" and m.get("memory_id"):
-            await delete_memory_db(m["memory_id"])
+            await delete_memory_db(user_id, m["memory_id"])
             
     for n in mutations["notes"]:
         action = n.get("action")
@@ -379,9 +379,9 @@ async def api_ai_voice(request: web.Request):
             await add_note(user_id, n["title"], n["content"], n.get("tags"), json.dumps(vec) if vec else None)
         elif action == "edit" and n.get("note_id"):
             vec = get_embedding(n.get("title", "") + " " + n.get("content", ""))
-            await update_note_db(n["note_id"], n.get("title"), n.get("content"), n.get("tags"), json.dumps(vec) if vec else None)
+            await update_note_db(user_id, n["note_id"], n.get("title"), n.get("content"), n.get("tags"), json.dumps(vec) if vec else None)
         elif action == "delete" and n.get("note_id"):
-            await delete_note_db(n["note_id"])
+            await delete_note_db(user_id, n["note_id"])
 
     return web.json_response({"status": "ok", "reply": reply_text, "mutations": mutations})
 

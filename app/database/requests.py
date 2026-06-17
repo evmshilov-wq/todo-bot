@@ -45,19 +45,22 @@ async def add_category_db(user_id: int, name: str, color: str = None, icon: str 
         session.add(Category(user_id=user_id, name=name, color=color, icon=icon))
         await session.commit()
 
-async def update_category_db(category_id: int, name: str, color: str = None, icon: str = None):
+async def update_category_db(user_id: int, category_id: int, name: str, color: str = None, icon: str = None):
     async with async_session() as session:
-        cat = await session.scalar(select(Category).where(Category.id == category_id))
+        cat = await session.scalar(select(Category).where(Category.id == category_id, Category.user_id == user_id))
         if cat:
             cat.name = name
             cat.color = color
             cat.icon = icon
             await session.commit()
 
-async def delete_category_db(category_id: int):
+async def delete_category_db(user_id: int, category_id: int):
     async with async_session() as session:
-        await session.execute(update(Task).where(Task.category_id == category_id).values(category_id=None))
-        await session.execute(delete(Category).where(Category.id == category_id))
+        # Check ownership first
+        cat = await session.scalar(select(Category).where(Category.id == category_id, Category.user_id == user_id))
+        if not cat: return
+        await session.execute(update(Task).where(Task.category_id == category_id, Task.user_id == user_id).values(category_id=None))
+        await session.execute(delete(Category).where(Category.id == category_id, Category.user_id == user_id))
         await session.commit()
 
 async def add_task(user_id: int, text: str, category_id: int, date_time: str, is_timeless: int, is_recurring: int = 0, recurrence_rule: str = None, end_time: str = None, google_event_id: str = None, priority: str = "B"):
@@ -66,32 +69,32 @@ async def add_task(user_id: int, text: str, category_id: int, date_time: str, is
         session.add(task)
         await session.commit()
 
-async def get_task_by_id(task_id: int):
+async def get_task_by_id(user_id: int, task_id: int):
     async with async_session() as session:
-        task = await session.scalar(select(Task).where(Task.id == task_id))
+        task = await session.scalar(select(Task).where(Task.id == task_id, Task.user_id == user_id))
         if task:
             return {"id": task.id, "text": task.text, "google_event_id": task.google_event_id, "priority": task.priority}
         return None
 
-async def update_task_text_db(task_id: int, new_text: str):
+async def update_task_text_db(user_id: int, task_id: int, new_text: str):
     async with async_session() as session:
-        await session.execute(update(Task).where(Task.id == task_id).values(text=new_text))
+        await session.execute(update(Task).where(Task.id == task_id, Task.user_id == user_id).values(text=new_text))
         await session.commit()
 
-async def update_task_datetime_db(task_id: int, date_time: str, is_timeless: int, google_event_id: str):
+async def update_task_datetime_db(user_id: int, task_id: int, date_time: str, is_timeless: int, google_event_id: str):
     async with async_session() as session:
-        await session.execute(update(Task).where(Task.id == task_id).values(date_time=date_time, is_timeless=is_timeless, google_event_id=google_event_id))
+        await session.execute(update(Task).where(Task.id == task_id, Task.user_id == user_id).values(date_time=date_time, is_timeless=is_timeless, google_event_id=google_event_id))
         await session.commit()
 
-async def delete_task_db(task_id: int):
+async def delete_task_db(user_id: int, task_id: int):
     async with async_session() as session:
-        await session.execute(delete(Task).where(Task.id == task_id))
+        await session.execute(delete(Task).where(Task.id == task_id, Task.user_id == user_id))
         await session.commit()
 
-async def complete_task_db(task_id: int):
+async def complete_task_db(user_id: int, task_id: int):
     async with async_session() as session:
-        await session.execute(update(Task).where(Task.id == task_id).values(is_completed=1))
-        task = await session.scalar(select(Task).where(Task.id == task_id))
+        await session.execute(update(Task).where(Task.id == task_id, Task.user_id == user_id).values(is_completed=1))
+        task = await session.scalar(select(Task).where(Task.id == task_id, Task.user_id == user_id))
         if task:
             user = await session.scalar(select(User).where(User.telegram_id == task.user_id))
             if user:
@@ -213,9 +216,9 @@ async def add_habit(user_id: int, name: str, frequency: str = "daily"):
         session.add(Habit(user_id=user_id, name=name, frequency=frequency))
         await session.commit()
 
-async def complete_habit(habit_id: int, target_date: date):
+async def complete_habit(user_id: int, habit_id: int, target_date: date):
     async with async_session() as session:
-        habit = await session.scalar(select(Habit).where(Habit.id == habit_id))
+        habit = await session.scalar(select(Habit).where(Habit.id == habit_id, Habit.user_id == user_id))
         if not habit: return False
         log = await session.scalar(select(HabitLog).where(HabitLog.habit_id == habit_id, HabitLog.date == target_date))
         if not log:
@@ -261,14 +264,14 @@ async def add_memory(user_id: int, fact: str, embedding: str = None):
         session.add(Memory(user_id=user_id, fact=fact, created_at=created_at, embedding=embedding))
         await session.commit()
 
-async def delete_memory_db(memory_id: int):
+async def delete_memory_db(user_id: int, memory_id: int):
     async with async_session() as session:
-        await session.execute(delete(Memory).where(Memory.id == memory_id))
+        await session.execute(delete(Memory).where(Memory.id == memory_id, Memory.user_id == user_id))
         await session.commit()
 
-async def update_memory_db(memory_id: int, fact_text: str):
+async def update_memory_db(user_id: int, memory_id: int, fact_text: str):
     async with async_session() as session:
-        memory = await session.scalar(select(Memory).where(Memory.id == memory_id))
+        memory = await session.scalar(select(Memory).where(Memory.id == memory_id, Memory.user_id == user_id))
         if memory:
             memory.fact = fact_text
             await session.commit()
@@ -285,9 +288,9 @@ async def add_note(user_id: int, title: str, content: str, tags: str = None, emb
         session.add(Note(user_id=user_id, title=title, content=content, tags=tags, created_at=created_at, embedding=embedding))
         await session.commit()
 
-async def update_note_db(note_id: int, title: str, content: str, tags: str = None, embedding: str = None):
+async def update_note_db(user_id: int, note_id: int, title: str, content: str, tags: str = None, embedding: str = None):
     async with async_session() as session:
-        note = await session.scalar(select(Note).where(Note.id == note_id))
+        note = await session.scalar(select(Note).where(Note.id == note_id, Note.user_id == user_id))
         if note:
             note.title = title
             note.content = content
@@ -295,7 +298,7 @@ async def update_note_db(note_id: int, title: str, content: str, tags: str = Non
             if embedding is not None: note.embedding = embedding
             await session.commit()
 
-async def delete_note_db(note_id: int):
+async def delete_note_db(user_id: int, note_id: int):
     async with async_session() as session:
-        await session.execute(delete(Note).where(Note.id == note_id))
+        await session.execute(delete(Note).where(Note.id == note_id, Note.user_id == user_id))
         await session.commit()
