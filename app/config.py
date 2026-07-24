@@ -7,7 +7,7 @@ BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN") or os.getenv("BOT_TOKEN")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 WEBHOOK_URL = os.getenv("WEBHOOK_URL", "https://vpn-shil-too-evmshilov.waw0.amvera.tech")
 WEBHOOK_PATH = "/webhook"
-WEBAPP_PORT = int(os.getenv("WEBAPP_PORT", 80))
+WEBAPP_PORT = int(os.getenv("PORT", os.getenv("WEBAPP_PORT", 80)))
 
 # Fallback for DB path if not running inside Amvera container
 DB_NAME = "/data/todo_bot.db"

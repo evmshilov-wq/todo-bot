@@ -18,7 +18,16 @@ async def on_startup(bot: Bot):
     await init_db()
     from app.services.scheduler import setup_scheduler
     setup_scheduler(bot)
-    await bot.set_webhook(f"{WEBHOOK_URL}{WEBHOOK_PATH}", drop_pending_updates=True)
+    
+    async def set_webhook_safe():
+        try:
+            await bot.set_webhook(f"{WEBHOOK_URL}{WEBHOOK_PATH}", drop_pending_updates=True)
+            logging.info("Webhook set successfully.")
+        except Exception as e:
+            logging.error(f"Failed to set webhook: {e}")
+            
+    import asyncio
+    asyncio.create_task(set_webhook_safe())
 
 def main():
     session = AiohttpSession()
