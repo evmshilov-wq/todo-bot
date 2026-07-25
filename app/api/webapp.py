@@ -313,6 +313,14 @@ async def api_shortcut(request: web.Request):
         
     user_id = int(user_id)
     
+    from app.database.requests import (
+        get_user_timezone, get_user_categories, add_task, update_task_text_db, 
+        update_task_datetime_db, delete_task_db, get_chat_history, add_chat_message,
+        get_memories, add_memory, delete_memory_db, get_tasks_for_today, get_tasks_without_date,
+        get_notes, add_note, update_note_db, delete_note_db
+    )
+    from app.services.google_cal import add_event_to_google
+    
     # 1. Fetch Context
     user_tz = await get_user_timezone(user_id)
     categories = await get_user_categories(user_id)
