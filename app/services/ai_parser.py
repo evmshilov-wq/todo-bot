@@ -21,11 +21,13 @@ class TaskActionModel(BaseModel):
     end_time: Optional[str] = Field(None, description="Окончание (YYYY-MM-DD HH:MM)")
     is_timeless: Optional[bool] = Field(True, description="true если без точного времени")
     priority: Optional[Literal["A", "B", "C", "D"]] = Field("B", description="Приоритет")
+    sphere: Optional[str] = Field("work", description="Сфера жизни: work, health, relationships, finance, hobbies, fitness, nutrition")
 
 class MemoryActionModel(BaseModel):
     action: Literal["add", "delete"] = Field(description="Действие: add или delete")
     memory_id: Optional[int] = Field(None, description="ID факта памяти (только для delete)")
     fact_text: Optional[str] = Field(None, description="Текст факта о пользователе (для add)")
+    sphere: Optional[str] = Field("work", description="Сфера жизни (work, health, relationships...)")
 
 
 class NoteActionModel(BaseModel):
@@ -34,13 +36,18 @@ class NoteActionModel(BaseModel):
     title: Optional[str] = Field(None, description="Заголовок заметки")
     content: Optional[str] = Field(None, description="Полный текст/статья в формате Markdown")
     tags: Optional[str] = Field(None, description="Теги через запятую, например: #идея, #работа")
+    sphere: Optional[str] = Field("work", description="Сфера жизни (work, health, relationships...)")
+
+class OnboardingActionModel(BaseModel):
+    action: Literal["update_state", "complete"] = Field(description="Действие с онбордингом")
+    new_state: Optional[str] = Field(None, description="Новое состояние онбординга, например 'вопрос 2'")
 
 class AIChatResponseModel(BaseModel):
-
     reply: str = Field(description="Эмпатичный и естественный ответ пользователю. Без роботизированных фраз.")
     tasks: List[TaskActionModel] = Field(default_factory=list, description="Действия с задачами, если требуются")
     memories: List[MemoryActionModel] = Field(default_factory=list, description="Новые факты для запоминания или удаления")
     notes: List[NoteActionModel] = Field(default_factory=list, description="Длинные заметки/рассуждения/статьи")
+    onboarding: Optional[OnboardingActionModel] = Field(None, description="Управление статусом интервью/онбординга")
 
 
 import math
@@ -91,7 +98,7 @@ def fetch_relevant_context(user_text: str, memories: list, notes: list, top_k: i
     
     return [m for _, m in scored_memories[:top_k]], [n for _, n in scored_notes[:top_k]]
 
-def get_ai_system_prompt(available_categories: list, user_tz: str, current_tasks: list, memories: list, notes: list) -> str:
+def get_ai_system_prompt(available_categories: list, user_tz: str, current_tasks: list, memories: list, notes: list, user_profile: dict = None) -> str:
 
     days_ru = {"Monday": "Понедельник", "Tuesday": "Вторник", "Wednesday": "Среда", "Thursday": "Четверг", "Friday": "Пятница", "Saturday": "Суббота", "Sunday": "Воскресенье"}
     try:
@@ -111,9 +118,28 @@ def get_ai_system_prompt(available_categories: list, user_tz: str, current_tasks
 
     memories_str = "\n".join([f"ID: {m['id']} | {m['fact']}" for m in memories]) if memories else "Нет релевантных фактов."
     notes_str = "\n".join([f"ЗАМЕТКА ID: {n['id']} | ЗАГОЛОВОК: {n['title']} | СОДЕРЖИМОЕ: {n['content'][:500]}..." for n in notes]) if notes else "Нет релевантных заметок."
+    
+    onboarding_instruction = ""
+    if user_profile and user_profile.get("onboarding_completed") == 0:
+        state = user_profile.get("onboarding_state") or "Начало"
+        onboarding_instruction = f"""
+ВАЖНОЕ СОСТОЯНИЕ (FSM): ПОЛЬЗОВАТЕЛЬ ПРОХОДИТ СТАРТОВОЕ ИНТЕРВЬЮ.
+Текущее состояние интервью: {state}.
+Твоя задача — задавать по одному вопросу (как психолог/коуч), чтобы выяснить:
+1. Род деятельности (работа)
+2. Физические данные, спорт и питание
+3. Увлечения и хобби
+4. Цели на год
+Если пользователь отвлекается или диктует задачу — ЗАПИШИ ЗАДАЧУ через JSON, но в 'reply' мягко верни его к интервью!
+Когда соберешь весь 'каркас' данных, вызови действие 'complete' в объекте onboarding.
+Если нужно перейти к следующему вопросу, вызови 'update_state' и передай 'new_state'.
+"""
+
     return f"""Ты — ИИ-Ассистент, Психолог и Менеджер (Second Brain). Твоя задача — общаться с пользователем как эмпатичный, живой человек, и одновременно невидимо управлять его делами и базой знаний.
 
 ТЕКУЩЕЕ ВРЕМЯ И ДАТА: {current_date}. Часовой пояс: {user_tz}.
+{onboarding_instruction}
+
 Доступные категории задач: [{categories_str}].
 
 ТЕКУЩИЕ ЗАДАЧИ ПОЛЬЗОВАТЕЛЯ:
@@ -127,21 +153,18 @@ def get_ai_system_prompt(available_categories: list, user_tz: str, current_tasks
 
 ИНСТРУКЦИИ ДЛЯ ОБЩЕНИЯ (поле reply):
 1. Общайся естественно, тепло и профессионально. НИКОГДА не говори "Я искусственный интеллект", "Как языковая модель" или "Давай я запишу это". Просто веди диалог.
-2. Если пользователь жалуется на усталость или стресс — прояви эмпатию, задай наводящий вопрос, предложи помощь. Отложи планирование.
+2. Если пользователь жалуется на усталость или стресс — прояви эмпатию, задай наводящий вопрос, предложи помощь.
 3. Если пользователь просто диктует задачи — ответь коротко ("Записал!", "Готово, добавил в план").
-4. Если пользователь просит удалить задачу/факт — сделай это (через JSON массивы) и подтверди словами.
+4. Отвечай эмпатично, как близкий друг. Не пиши "Я добавил задачу". Пиши естественно: "Супер, записал на завтра" или "Понял, сохранил эту мысль".
 
 ИНСТРУКЦИИ ДЛЯ JSON (управление данными):
+- ОБЯЗАТЕЛЬНО УКАЗЫВАЙ СФЕРУ (sphere) для ВСЕХ новых задач, фактов и заметок (work, health, relationships, finance, hobbies, fitness, nutrition).
 - Если в речи пользователя есть новые дела, добавь их в массив `tasks` (action="add").
-- Если он просит изменить время/дедлайн или перенести задачу на другой день, найди ее ID в списке ТЕКУЩИЕ ЗАДАЧИ и добавь в `tasks` (action="edit").
-- ОЧЕНЬ ВАЖНО ПРО ДАТУ И ВРЕМЯ: Если пользователь называет день (завтра, в среду) или время (примерно в 17ч, в 19 часов), ты ОБЯЗАН ВЫСЧИТАТЬ правильную дату и время в формате YYYY-MM-DD HH:MM на основе ТЕКУЩЕЙ ДАТЫ. 
-- Если указан час (даже "примерно в 17ч"), обязательно запиши его в date_time, а параметр `is_timeless` сделай false. Если точного времени нет (только "завтра"), то `is_timeless` = true.
-- Если пользователь просит удалить задачу, добавь в `tasks` (action="delete", task_id=ID).
-- 3. Вытаскивай важные факты о пользователе (имя, кто его друзья, место работы, интересы, долгосрочные цели) и сохраняй их в `memories` (action="add").
-- 4. Если пользователь рассказывает о своих мыслях, идеях, планах, дневниковых записях или проектах — ОБЯЗАТЕЛЬНО создай Заметку (`notes`, action="add", title, content, tags). Пиши content красиво, используй Markdown. ВАЖНО: Если в `reply` ты говоришь "Я записал идею/заметку", ты ОБЯЗАН добавить объект в массив `notes`!
-- 5. Отвечай эмпатично, как близкий друг. Не пиши "Я добавил задачу". Пиши естественно: "Супер, записал на завтра" или "Понял, сохранил эту мысль".
+- ОЧЕНЬ ВАЖНО ПРО ДАТУ И ВРЕМЯ: Если пользователь называет день (завтра, в среду) или время (примерно в 17ч), ты ОБЯЗАН ВЫСЧИТАТЬ правильную дату и время в формате YYYY-MM-DD HH:MM на основе ТЕКУЩЕЙ ДАТЫ. 
+- Если указан час, обязательно запиши его в date_time, а параметр `is_timeless` сделай false. Если точного времени нет, то `is_timeless` = true.
+- Если пользователь рассказывает о своих мыслях, идеях, планах, дневниковых записях — ОБЯЗАТЕЛЬНО создай Заметку (`notes`, action="add", title, content, tags, sphere). Пиши content красиво, используй Markdown. ВАЖНО: Если в `reply` ты говоришь "Я записал идею/заметку", ты ОБЯЗАН добавить объект в массив `notes`!
+- Вытаскивай важные факты о пользователе (имя, кто его друзья, место работы, интересы, долгосрочные цели) и сохраняй их в `memories` (action="add", sphere).
 - Приоритеты задач: A (критично), B (важно), C (рутина), D (бэклог/несрочно).
-
 """
 
 def format_history_for_gemini(chat_history: list) -> list:
@@ -151,9 +174,9 @@ def format_history_for_gemini(chat_history: list) -> list:
         contents.append(genai_types.Content(role=role, parts=[genai_types.Part.from_text(text=msg["text"])]))
     return contents
 
-async def process_chat_message(user_text: str, chat_history: list, current_tasks: list, memories: list, notes: list, available_categories: list, user_tz: str) -> dict:
+async def process_chat_message(user_text: str, chat_history: list, current_tasks: list, memories: list, notes: list, available_categories: list, user_tz: str, user_profile: dict = None) -> dict:
     rel_mem, rel_notes = fetch_relevant_context(user_text, memories, notes)
-    system_prompt = get_ai_system_prompt(available_categories, user_tz, current_tasks, rel_mem, rel_notes)
+    system_prompt = get_ai_system_prompt(available_categories, user_tz, current_tasks, rel_mem, rel_notes, user_profile)
     contents = format_history_for_gemini(chat_history)
     contents.append(genai_types.Content(role="user", parts=[genai_types.Part.from_text(text=user_text)]))
     
@@ -172,7 +195,7 @@ async def process_chat_message(user_text: str, chat_history: list, current_tasks
         logging.error(f"Ошибка AI Chat: {e}")
         return {"reply": "Прости, я немного задумался и потерял мысль (ошибка сети). Повтори, пожалуйста?", "tasks": [], "memories": []}
 
-async def process_chat_voice(file_path: str, chat_history: list, current_tasks: list, memories: list, notes: list, available_categories: list, user_tz: str, user_text: str = "") -> dict:
+async def process_chat_voice(file_path: str, chat_history: list, current_tasks: list, memories: list, notes: list, available_categories: list, user_tz: str, user_text: str = "", user_profile: dict = None) -> dict:
     try:
         uploaded_file = client.files.upload(file=file_path)
         
@@ -188,7 +211,8 @@ async def process_chat_voice(file_path: str, chat_history: list, current_tasks: 
         
         # Step 2: Fetch Semantic Context using the transcribed text
         rel_mem, rel_notes = fetch_relevant_context(transcribed_text, memories, notes)
-        system_prompt = get_ai_system_prompt(available_categories, user_tz, current_tasks, rel_mem, rel_notes)
+        system_prompt = get_ai_system_prompt(available_categories, user_tz, current_tasks, rel_mem, rel_notes, user_profile)
+
         contents = format_history_for_gemini(chat_history)
         
         # We append the transcribed text as the user's explicit message, so the AI knows exactly what was said

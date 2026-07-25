@@ -15,6 +15,8 @@ class User(Base):
     google_token: Mapped[str] = mapped_column(String, nullable=True)
     morning_time: Mapped[str] = mapped_column(String, default="09:00")
     evening_time: Mapped[str] = mapped_column(String, default="23:00")
+    onboarding_completed: Mapped[int] = mapped_column(Integer, default=0)
+    onboarding_state: Mapped[str] = mapped_column(String, nullable=True)
 
 class Category(Base):
     __tablename__ = 'categories'
@@ -55,6 +57,7 @@ class Task(Base):
     end_time: Mapped[str] = mapped_column(String, nullable=True)
     google_event_id: Mapped[str] = mapped_column(String, nullable=True)
     priority: Mapped[str] = mapped_column(String, default="B")
+    sphere: Mapped[str] = mapped_column(String, default="work")
 
 class ChatMessage(Base):
     __tablename__ = 'chat_messages'
@@ -71,6 +74,7 @@ class Memory(Base):
     fact: Mapped[str] = mapped_column(String)
     created_at: Mapped[str] = mapped_column(String)
     embedding: Mapped[str] = mapped_column(String, nullable=True) # JSON string of floats
+    sphere: Mapped[str] = mapped_column(String, default="work")
 
 class Note(Base):
     __tablename__ = 'notes'
@@ -81,3 +85,4 @@ class Note(Base):
     tags: Mapped[str] = mapped_column(String, nullable=True) # comma-separated
     created_at: Mapped[str] = mapped_column(String)
     embedding: Mapped[str] = mapped_column(String, nullable=True) # JSON string of floats
+    sphere: Mapped[str] = mapped_column(String, default="work")

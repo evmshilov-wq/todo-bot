@@ -25,6 +25,29 @@ async def get_user_timezone(telegram_id: int) -> str:
         user = await session.scalar(select(User).where(User.telegram_id == telegram_id))
         return user.timezone if user else DEFAULT_TZ
 
+async def get_user_profile(telegram_id: int) -> dict | None:
+    async with async_session() as session:
+        user = await session.scalar(select(User).where(User.telegram_id == telegram_id))
+        if user:
+            return {
+                "onboarding_completed": user.onboarding_completed,
+                "onboarding_state": user.onboarding_state,
+                "timezone": user.timezone,
+                "morning_time": user.morning_time,
+                "evening_time": user.evening_time,
+                "level": user.level,
+                "xp": user.xp
+            }
+        return None
+
+async def update_onboarding(telegram_id: int, completed: int, state: str | None):
+    async with async_session() as session:
+        await session.execute(update(User).where(User.telegram_id == telegram_id).values(
+            onboarding_completed=completed,
+            onboarding_state=state
+        ))
+        await session.commit()
+
 async def get_google_token(telegram_id: int) -> str | None:
     async with async_session() as session:
         user = await session.scalar(select(User).where(User.telegram_id == telegram_id))
@@ -63,9 +86,9 @@ async def delete_category_db(user_id: int, category_id: int):
         await session.execute(delete(Category).where(Category.id == category_id, Category.user_id == user_id))
         await session.commit()
 
-async def add_task(user_id: int, text: str, category_id: int, date_time: str, is_timeless: int, is_recurring: int = 0, recurrence_rule: str = None, end_time: str = None, google_event_id: str = None, priority: str = "B"):
+async def add_task(user_id: int, text: str, category_id: int = None, date_time: str = None, is_timeless: int = 0, is_recurring: int = 0, recurrence_rule: str = None, end_time: str = None, google_event_id: str = None, priority: str = "B", sphere: str = "work"):
     async with async_session() as session:
-        task = Task(user_id=user_id, text=text, category_id=category_id, date_time=date_time, is_timeless=is_timeless, is_recurring=is_recurring, recurrence_rule=recurrence_rule, end_time=end_time, google_event_id=google_event_id, priority=priority)
+        task = Task(user_id=user_id, text=text, category_id=category_id, date_time=date_time, is_timeless=is_timeless, is_recurring=is_recurring, recurrence_rule=recurrence_rule, end_time=end_time, google_event_id=google_event_id, priority=priority, sphere=sphere)
         session.add(task)
         await session.commit()
 
@@ -258,10 +281,10 @@ async def get_memories(user_id: int):
         result = await session.scalars(query)
         return [{"id": m.id, "fact": m.fact, "created_at": m.created_at, "embedding": m.embedding} for m in result.all()]
 
-async def add_memory(user_id: int, fact: str, embedding: str = None):
+async def add_memory(user_id: int, fact: str, embedding: str = None, sphere: str = "work"):
     created_at = datetime.now().isoformat()
     async with async_session() as session:
-        session.add(Memory(user_id=user_id, fact=fact, created_at=created_at, embedding=embedding))
+        session.add(Memory(user_id=user_id, fact=fact, created_at=created_at, embedding=embedding, sphere=sphere))
         await session.commit()
 
 async def delete_memory_db(user_id: int, memory_id: int):
@@ -282,10 +305,10 @@ async def get_notes(user_id: int):
         result = await session.scalars(query)
         return [{"id": n.id, "title": n.title, "content": n.content, "tags": n.tags, "created_at": n.created_at, "embedding": n.embedding} for n in result.all()]
 
-async def add_note(user_id: int, title: str, content: str, tags: str = None, embedding: str = None):
+async def add_note(user_id: int, title: str, content: str, tags: str = None, embedding: str = None, sphere: str = "work"):
     created_at = datetime.now().isoformat()
     async with async_session() as session:
-        session.add(Note(user_id=user_id, title=title, content=content, tags=tags, created_at=created_at, embedding=embedding))
+        session.add(Note(user_id=user_id, title=title, content=content, tags=tags, created_at=created_at, embedding=embedding, sphere=sphere))
         await session.commit()
 
 async def update_note_db(user_id: int, note_id: int, title: str, content: str, tags: str = None, embedding: str = None):

@@ -228,7 +228,7 @@ async def api_ai_text(request: web.Request):
         get_user_timezone, get_user_categories, add_task, update_task_text_db, 
         update_task_datetime_db, delete_task_db, get_chat_history, add_chat_message,
         get_memories, add_memory, delete_memory_db, get_tasks_for_today, get_tasks_without_date,
-        get_notes, add_note, update_note_db, delete_note_db
+        get_notes, add_note, update_note_db, delete_note_db, get_user_profile, update_onboarding
     )
     from app.services.ai_parser import process_chat_message, get_embedding
     from app.services.google_cal import add_event_to_google
@@ -248,8 +248,11 @@ async def api_ai_text(request: web.Request):
     # 2. Save User Message
     await add_chat_message(user_id, "user", text)
     
+    # 2.5 Fetch Profile
+    user_profile = await get_user_profile(user_id)
+    
     # 3. Call AI
-    ai_response = await process_chat_message(text, chat_history, current_tasks, memories, notes, cat_names, user_tz)
+    ai_response = await process_chat_message(text, chat_history, current_tasks, memories, notes, cat_names, user_tz, user_profile)
     reply_text = ai_response.get("reply", "Произошла ошибка обработки.")
     
     # 4. Save AI Reply
@@ -267,7 +270,7 @@ async def api_ai_text(request: web.Request):
             cat_id = next((c["id"] for c in categories if c["name"] == t.get("category")), None)
             is_tl = t.get("is_timeless", True)
             g_id = await add_event_to_google(user_id, t.get("task_text", ""), t.get("date_time"), t.get("end_time"), is_tl, user_tz)
-            await add_task(user_id, t.get("task_text", ""), cat_id, t.get("date_time"), 1 if is_tl else 0, 0, None, t.get("end_time"), g_id, t.get("priority", "B"))
+            await add_task(user_id, t.get("task_text", ""), cat_id, t.get("date_time"), 1 if is_tl else 0, 0, None, t.get("end_time"), g_id, t.get("priority", "B"), t.get("sphere", "work"))
         elif action == "edit" and t.get("task_id"):
             if t.get("task_text"): await update_task_text_db(user_id, t["task_id"], t["task_text"])
             if t.get("date_time") or t.get("is_timeless") is not None:
@@ -279,7 +282,7 @@ async def api_ai_text(request: web.Request):
         action = m.get("action")
         if action == "add" and m.get("fact_text"):
             vec = get_embedding(m["fact_text"])
-            await add_memory(user_id, m["fact_text"], json.dumps(vec) if vec else None)
+            await add_memory(user_id, m["fact_text"], json.dumps(vec) if vec else None, m.get("sphere", "work"))
         elif action == "delete" and m.get("memory_id"):
             await delete_memory_db(user_id, m["memory_id"])
             
@@ -287,12 +290,20 @@ async def api_ai_text(request: web.Request):
         action = n.get("action")
         if action == "add" and n.get("title") and n.get("content"):
             vec = get_embedding(n["title"] + " " + n["content"])
-            await add_note(user_id, n["title"], n["content"], n.get("tags"), json.dumps(vec) if vec else None)
+            await add_note(user_id, n["title"], n["content"], n.get("tags"), json.dumps(vec) if vec else None, n.get("sphere", "work"))
         elif action == "edit" and n.get("note_id"):
             vec = get_embedding(n.get("title", "") + " " + n.get("content", ""))
             await update_note_db(user_id, n["note_id"], n.get("title"), n.get("content"), n.get("tags"), json.dumps(vec) if vec else None)
         elif action == "delete" and n.get("note_id"):
             await delete_note_db(user_id, n["note_id"])
+            
+    # 6. Process Onboarding State
+    onboarding = ai_response.get("onboarding")
+    if onboarding:
+        if onboarding.get("action") == "complete":
+            await update_onboarding(user_id, 1, None)
+        elif onboarding.get("action") == "update_state" and onboarding.get("new_state"):
+            await update_onboarding(user_id, 0, onboarding.get("new_state"))
 
     return web.json_response({"status": "ok", "reply": reply_text, "mutations": mutations})
 
@@ -411,7 +422,7 @@ async def api_ai_voice(request: web.Request):
         get_user_timezone, get_user_categories, add_task, update_task_text_db, 
         update_task_datetime_db, delete_task_db, get_chat_history, add_chat_message,
         get_memories, add_memory, delete_memory_db, get_tasks_for_today, get_tasks_without_date,
-        get_notes, add_note, update_note_db, delete_note_db
+        get_notes, add_note, update_note_db, delete_note_db, get_user_profile, update_onboarding
     )
     from app.services.ai_parser import process_chat_voice, get_embedding
     from app.services.google_cal import add_event_to_google
@@ -429,8 +440,11 @@ async def api_ai_voice(request: web.Request):
     nodate_tasks = await get_tasks_without_date(user_id)
     current_tasks = today_tasks + nodate_tasks
     
+    # 2.5 Fetch Profile
+    user_profile = await get_user_profile(user_id)
+    
     # 3. Call AI
-    ai_response = await process_chat_voice(file_path, chat_history, current_tasks, memories, notes, cat_names, user_tz)
+    ai_response = await process_chat_voice(file_path, chat_history, current_tasks, memories, notes, cat_names, user_tz, user_text="", user_profile=user_profile)
     os.remove(file_path)
     
     reply_text = ai_response.get("reply", "Прости, не расслышал.")
@@ -451,7 +465,7 @@ async def api_ai_voice(request: web.Request):
             cat_id = next((c["id"] for c in categories if c["name"] == t.get("category")), None)
             is_tl = t.get("is_timeless", True)
             g_id = await add_event_to_google(user_id, t.get("task_text", ""), t.get("date_time"), t.get("end_time"), is_tl, user_tz)
-            await add_task(user_id, t.get("task_text", ""), cat_id, t.get("date_time"), 1 if is_tl else 0, 0, None, t.get("end_time"), g_id, t.get("priority", "B"))
+            await add_task(user_id, t.get("task_text", ""), cat_id, t.get("date_time"), 1 if is_tl else 0, 0, None, t.get("end_time"), g_id, t.get("priority", "B"), t.get("sphere", "work"))
         elif action == "edit" and t.get("task_id"):
             if t.get("task_text"): await update_task_text_db(user_id, t["task_id"], t["task_text"])
             if t.get("date_time") or t.get("is_timeless") is not None:
@@ -463,7 +477,7 @@ async def api_ai_voice(request: web.Request):
         action = m.get("action")
         if action == "add" and m.get("fact_text"):
             vec = get_embedding(m["fact_text"])
-            await add_memory(user_id, m["fact_text"], json.dumps(vec) if vec else None)
+            await add_memory(user_id, m["fact_text"], json.dumps(vec) if vec else None, m.get("sphere", "work"))
         elif action == "delete" and m.get("memory_id"):
             await delete_memory_db(user_id, m["memory_id"])
             
@@ -471,12 +485,20 @@ async def api_ai_voice(request: web.Request):
         action = n.get("action")
         if action == "add" and n.get("title") and n.get("content"):
             vec = get_embedding(n["title"] + " " + n["content"])
-            await add_note(user_id, n["title"], n["content"], n.get("tags"), json.dumps(vec) if vec else None)
+            await add_note(user_id, n["title"], n["content"], n.get("tags"), json.dumps(vec) if vec else None, n.get("sphere", "work"))
         elif action == "edit" and n.get("note_id"):
             vec = get_embedding(n.get("title", "") + " " + n.get("content", ""))
             await update_note_db(user_id, n["note_id"], n.get("title"), n.get("content"), n.get("tags"), json.dumps(vec) if vec else None)
         elif action == "delete" and n.get("note_id"):
             await delete_note_db(user_id, n["note_id"])
+            
+    # 6. Process Onboarding State
+    onboarding = ai_response.get("onboarding")
+    if onboarding:
+        if onboarding.get("action") == "complete":
+            await update_onboarding(user_id, 1, None)
+        elif onboarding.get("action") == "update_state" and onboarding.get("new_state"):
+            await update_onboarding(user_id, 0, onboarding.get("new_state"))
 
     return web.json_response({"status": "ok", "reply": reply_text, "mutations": mutations})
 

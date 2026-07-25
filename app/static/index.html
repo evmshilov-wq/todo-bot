@@ -3,53 +3,116 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AI ToDo & Habits</title>
-    <link rel="stylesheet" href="/static/style.css?v=3">
+    <title>Life OS</title>
+    <link rel="stylesheet" href="/static/style.css?v=4">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://unpkg.com/force-graph"></script>
 </head>
 <body>
     <div id="app-container">
-        <!-- Header with XP Bar -->
-        <header class="glass-header">
-            <div class="avatar" id="user-avatar-container">
+        
+        <!-- Header -->
+        <header class="header">
+            <h1 class="header-title">Life OS</h1>
+            <div class="header-profile">
                 <span id="user-initial">👤</span>
-            </div>
-            <div class="header-details">
-                <div class="user-row">
-                    <h2 id="user-name">Загрузка...</h2>
-                    <span class="level-badge">Ур <span id="user-level">1</span></span>
-                </div>
-                <div class="xp-container">
-                    <div class="xp-bar-bg">
-                        <div class="xp-bar-fill" id="xp-bar-fill"></div>
-                    </div>
-                </div>
             </div>
         </header>
 
-        <!-- Main Content Area -->
-        <main id="main-content">
-            <!-- Calendar Tab -->
-            <section id="tab-calendar" class="tab-content">
-                <div class="section-header">
-                    <h3>Календарь</h3>
+        <!-- Main Dashboard: 7 Spheres -->
+        <main id="view-dashboard" class="view-active">
+            <div class="spheres-grid">
+                
+                <!-- 1. Work -->
+                <div class="sphere-card" onclick="openView('view-work')">
+                    <div class="sphere-icon" style="background: rgba(10, 132, 255, 0.1); color: #0A84FF;">
+                        <i data-lucide="briefcase"></i>
+                    </div>
+                    <div class="sphere-content">
+                        <h3>Работа и Задачи</h3>
+                        <p class="sphere-stat" id="stat-work">Осталось 3 задачи</p>
+                    </div>
                 </div>
-                <div id="calendar-grid" class="calendar-grid">
-                    <!-- JS generated calendar -->
-                </div>
-                <div class="section-header" style="margin-top: 20px;">
-                    <h3 id="cal-date-title">Задачи</h3>
-                </div>
-                <div id="cal-tasks-list" class="items-list">
-                    <div class="loading" style="color: var(--text-muted);">Выберите дату</div>
-                </div>
-            </section>
 
-            <!-- Tasks Tab -->
-            <section id="tab-tasks" class="tab-content active">
+                <!-- 2. Fitness -->
+                <div class="sphere-card" onclick="openView('view-fitness')">
+                    <div class="sphere-icon" style="background: rgba(255, 59, 48, 0.1); color: #FF3B30;">
+                        <i data-lucide="dumbbell"></i>
+                    </div>
+                    <div class="sphere-content">
+                        <h3>Тренировки</h3>
+                        <p class="sphere-stat" id="stat-fitness">След. тренировка завтра</p>
+                    </div>
+                </div>
+
+                <!-- 3. Nutrition -->
+                <div class="sphere-card" onclick="openView('view-nutrition')">
+                    <div class="sphere-icon" style="background: rgba(52, 199, 89, 0.1); color: #34C759;">
+                        <i data-lucide="apple"></i>
+                    </div>
+                    <div class="sphere-content">
+                        <h3>Питание</h3>
+                        <p class="sphere-stat" id="stat-nutrition">1800 ккал сегодня</p>
+                    </div>
+                </div>
+
+                <!-- 4. Relationships -->
+                <div class="sphere-card" onclick="openView('view-relationships')">
+                    <div class="sphere-icon" style="background: rgba(255, 45, 85, 0.1); color: #FF2D55;">
+                        <i data-lucide="heart"></i>
+                    </div>
+                    <div class="sphere-content">
+                        <h3>Семья и Отношения</h3>
+                        <p class="sphere-stat" id="stat-relationships">Все хорошо</p>
+                    </div>
+                </div>
+
+                <!-- 5. Hobbies -->
+                <div class="sphere-card" onclick="openView('view-hobbies')">
+                    <div class="sphere-icon" style="background: rgba(175, 82, 222, 0.1); color: #AF52DE;">
+                        <i data-lucide="palette"></i>
+                    </div>
+                    <div class="sphere-content">
+                        <h3>Хобби и Проекты</h3>
+                        <p class="sphere-stat" id="stat-hobbies">Нет активных проектов</p>
+                    </div>
+                </div>
+
+                <!-- 6. Health -->
+                <div class="sphere-card" onclick="openView('view-health')">
+                    <div class="sphere-icon" style="background: rgba(255, 149, 0, 0.1); color: #FF9500;">
+                        <i data-lucide="activity"></i>
+                    </div>
+                    <div class="sphere-content">
+                        <h3>Здоровье и Сон</h3>
+                        <p class="sphere-stat" id="stat-health">Сон 7ч 30м</p>
+                    </div>
+                </div>
+
+                <!-- 7. Finance -->
+                <div class="sphere-card" onclick="openView('view-finance')">
+                    <div class="sphere-icon" style="background: rgba(48, 209, 88, 0.1); color: #30D158;">
+                        <i data-lucide="dollar-sign"></i>
+                    </div>
+                    <div class="sphere-content">
+                        <h3>Финансы</h3>
+                        <p class="sphere-stat" id="stat-finance">Бюджет в норме</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Detailed View: Work (Sphere 1 MVP) -->
+        <main id="view-work" class="view-hidden">
+            <div class="view-header">
+                <button class="icon-btn-back" onclick="openView('view-dashboard')">
+                    <i data-lucide="chevron-left"></i> Назад
+                </button>
+                <h2>Работа</h2>
+            </div>
+            
+            <div class="content-section">
                 <div class="section-header">
                     <h3>Задачи на сегодня</h3>
                     <span class="badge" id="tasks-count">0</span>
@@ -57,235 +120,37 @@
                 <div id="tasks-list" class="items-list">
                     <div class="loading">Загрузка задач...</div>
                 </div>
-                <div class="section-header" style="margin-top: 24px;">
-                    <h3>Бэклог (Без даты)</h3>
-                </div>
-                <div id="nodate-tasks-list" class="items-list">
-                    <div class="loading">Загрузка...</div>
-                </div>
-            </section>
+            </div>
 
-            <!-- Habits Tab -->
-            <section id="tab-habits" class="tab-content">
+            <div class="content-section" style="margin-top: 24px;">
                 <div class="section-header">
-                    <h3>Трекер привычек</h3>
-                    <button class="icon-btn" onclick="showAddHabitModal()"><i data-lucide="plus"></i></button>
+                    <h3>Second Brain (Заметки)</h3>
                 </div>
-                <div id="habits-list" class="items-list">
-                    <!-- Habits will be loaded here -->
+                <div id="notes-list" class="items-list">
+                    <div class="loading">Загрузка базы знаний...</div>
                 </div>
-            </section>
-
-            <!-- AI Chat Tab -->
-            <section id="tab-ai" class="tab-content">
-                <div class="chat-header section-header">
-                    <h3>Мой Второй Мозг</h3>
-                </div>
-                <div id="chat-messages" class="chat-messages-container">
-                    <div class="loading" style="color:var(--text-muted); text-align:center; padding-top:20px;">Загрузка диалога...</div>
-                </div>
-                <div id="ai-status" class="ai-status-text"></div>
-                <div class="chat-input-area glass-panel">
-                    <textarea id="ai-text-input" placeholder="Напиши мысли или дела..."></textarea>
-                    <div class="chat-actions">
-                        <button id="btn-voice" class="icon-btn" style="color: var(--text-main);"><i data-lucide="mic"></i></button>
-                        <button id="btn-send" class="icon-btn" style="color: var(--primary);"><i data-lucide="send"></i></button>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Memories & Analytics Tab -->
-            <section id="tab-analytics" class="tab-content">
-                <div class="chat-header section-header">
-                    <h3>Второй Мозг</h3>
-                </div>
-                
-                <div class="brain-tabs" style="display:flex; gap:8px; margin-bottom:16px;">
-                    <button class="glass-btn primary" onclick="switchBrainTab('graph')" id="btn-tab-graph">Граф</button>
-                    <button class="glass-btn" onclick="switchBrainTab('notes')" id="btn-tab-notes">Заметки</button>
-                    <button class="glass-btn" onclick="switchBrainTab('memories')" id="btn-tab-memories">Факты</button>
-                </div>
-
-                <div id="brain-graph" class="brain-content" style="margin-bottom: 24px;">
-                    <div id="3d-graph" style="width: 100%; height: 350px; border-radius: 24px; overflow: hidden; background: var(--input-bg); border: 1px solid var(--glass-border);"></div>
-                </div>
-
-                <div id="brain-notes" class="brain-content" style="display:none;">
-                    <div id="notes-list" style="display:flex; flex-direction:column; gap:12px;"></div>
-                </div>
-
-                <div id="brain-memories" class="brain-content" style="display:none;">
-                    <div class="glass-panel" style="padding: 16px; border-radius: 24px; margin-bottom: 24px;">
-                        <p style="font-size:12px; color:var(--text-muted); margin-bottom:16px;">Факты о тебе, которые я учитываю при ответах. Ты можешь просить меня удалить или добавить новые через чат.</p>
-                        <div id="memories-list" style="display:flex; flex-direction:column; gap:8px;">
-                            <div class="loading" style="font-size:13px; color:var(--text-muted);">Загрузка памяти...</div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="section-header">
-                    <h3>Настройки</h3>
-                </div>
-                
-                <div style="margin-bottom: 24px; margin-top: 24px;">
-                    <h4>Темы оформления</h4>
-                    <div style="margin-top:12px;">
-                        <select id="theme-selector" class="glass-input" style="width: 100%; padding: 12px; font-size: 15px;" onchange="setTheme(this.value)">
-                            <option value="dark">🌌 Dark</option>
-                            <option value="amoled">🌑 AMOLED</option>
-                            <option value="light">☀️ Light</option>
-                            <option value="neon-pink">🌸 Neon</option>
-                        </select>
-                    </div>
-                </div>
-
-                <!-- Уведомления и Дайджесты -->
-                <div style="margin-bottom: 24px;">
-                    <h4>Уведомления и Дайджесты</h4>
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px;">
-                        <span style="font-size:14px;">Утренний план</span>
-                        <input type="time" id="settings-morning-time" class="glass-input" style="width:100px; padding:6px; margin:0;" value="09:00" onchange="saveSettings()">
-                    </div>
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px;">
-                        <span style="font-size:14px;">Вечерние итоги</span>
-                        <input type="time" id="settings-evening-time" class="glass-input" style="width:100px; padding:6px; margin:0;" value="23:00" onchange="saveSettings()">
-                    </div>
-                </div>
-
-                <div style="margin-bottom: 24px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; gap: 12px;">
-                        <div style="flex: 1; min-width: 0;">
-                            <h4 style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Google Календарь</h4>
-                            <p style="font-size:12px; color:var(--text-muted); margin-top:4px; line-height:1.2;">Экспорт задач в календарь</p>
-                        </div>
-                        <button class="glass-btn primary" style="padding: 8px 16px; font-size: 14px; width: auto; flex-shrink: 0;" onclick="connectGoogleCalendar()">Подключить</button>
-                    </div>
-                </div>
-                
-                <div class="glass-panel">
-                    <div style="display:flex; gap:12px; align-items:center;">
-                        <h4>Категории задач</h4>
-                        <button class="icon-btn" onclick="showAddCategoryModal()"><i data-lucide="plus"></i></button>
-                    </div>
-                    <div id="categories-list" style="display:flex; flex-wrap:wrap; gap:8px; margin-top:12px;"></div>
-                </div>
-            </section>
+            </div>
         </main>
+        
+        <!-- Placeholders for other views for Step 2 -->
+        <main id="view-fitness" class="view-hidden"><div class="view-header"><button class="icon-btn-back" onclick="openView('view-dashboard')"><i data-lucide="chevron-left"></i> Назад</button><h2>Тренировки</h2></div><div class="content-section"><p>В разработке (Шаг 2)</p></div></main>
+        <main id="view-nutrition" class="view-hidden"><div class="view-header"><button class="icon-btn-back" onclick="openView('view-dashboard')"><i data-lucide="chevron-left"></i> Назад</button><h2>Питание</h2></div><div class="content-section"><p>В разработке (Шаг 2)</p></div></main>
+        <main id="view-relationships" class="view-hidden"><div class="view-header"><button class="icon-btn-back" onclick="openView('view-dashboard')"><i data-lucide="chevron-left"></i> Назад</button><h2>Отношения</h2></div><div class="content-section"><p>В разработке (Шаг 3)</p></div></main>
+        <main id="view-hobbies" class="view-hidden"><div class="view-header"><button class="icon-btn-back" onclick="openView('view-dashboard')"><i data-lucide="chevron-left"></i> Назад</button><h2>Хобби</h2></div><div class="content-section"><p>В разработке</p></div></main>
+        <main id="view-health" class="view-hidden"><div class="view-header"><button class="icon-btn-back" onclick="openView('view-dashboard')"><i data-lucide="chevron-left"></i> Назад</button><h2>Здоровье</h2></div><div class="content-section"><p>Утренние чекапы работают через чат Telegram.</p></div></main>
+        <main id="view-finance" class="view-hidden"><div class="view-header"><button class="icon-btn-back" onclick="openView('view-dashboard')"><i data-lucide="chevron-left"></i> Назад</button><h2>Финансы</h2></div><div class="content-section"><p>В разработке</p></div></main>
 
-        <!-- Bottom Navigation -->
-        <nav class="bottom-nav glass-nav">
-            <button class="nav-item" data-target="tab-calendar">
-                <i data-lucide="calendar-days" class="nav-icon"></i>
-            </button>
-            <button class="nav-item active" data-target="tab-tasks">
-                <i data-lucide="check-square" class="nav-icon"></i>
-            </button>
-            <button class="nav-item ai-center-btn" data-target="tab-ai">
-                <div class="ai-circle">
-                    <i data-lucide="sparkles"></i>
-                </div>
-            </button>
-            <button class="nav-item" data-target="tab-habits">
-                <i data-lucide="flame" class="nav-icon"></i>
-            </button>
-            <button class="nav-item" data-target="tab-analytics">
-                <i data-lucide="layout-grid" class="nav-icon"></i>
-            </button>
-        </nav>
+        <!-- Floating Chat Button (Always visible) -->
+        <button id="floating-chat-btn" onclick="openChat()">
+            <i data-lucide="message-circle"></i>
+        </button>
+
     </div>
 
-    <!-- Modals -->
-    <div id="add-habit-modal" class="modal-overlay hidden">
-        <div class="modal-content glass-panel">
-            <h3>Новая привычка</h3>
-            <input type="text" id="new-habit-name" placeholder="Например: Выпить стакан воды" class="glass-input">
-            <div class="modal-actions">
-                <button class="glass-btn" onclick="hideModal('add-habit-modal')">Отмена</button>
-                <button class="glass-btn primary" onclick="submitNewHabit()">Добавить</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="note-modal" class="modal-overlay hidden">
-        <div class="modal-content glass-panel" style="max-width: 90%; max-height: 80vh; overflow-y:auto;">
-            <input type="text" id="note-modal-title" class="glass-input" style="font-weight:bold; font-size:18px; margin-bottom:8px;">
-            <textarea id="note-modal-content" class="glass-input" style="height:200px; font-size:14px; line-height:1.5; white-space:pre-wrap; resize:vertical;"></textarea>
-            <div class="modal-actions" style="margin-top:16px;">
-                <button class="glass-btn" style="color:var(--danger);" onclick="deleteNote()">Удалить</button>
-                <div style="display:flex; gap:8px;">
-                    <button class="glass-btn" onclick="hideModal('note-modal')">Отмена</button>
-                    <button class="glass-btn primary" onclick="submitEditNote()">Сохранить</button>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <div id="edit-memory-modal" class="modal-overlay hidden">
-        <div class="modal-content glass-panel">
-            <h3>Редактировать факт</h3>
-            <textarea id="edit-memory-text" class="glass-input" style="height:100px;"></textarea>
-            <div class="modal-actions">
-                <button class="glass-btn" style="color:var(--danger);" onclick="deleteMemoryModal()">Удалить</button>
-                <div style="display:flex; gap:8px;">
-                    <button class="glass-btn" onclick="hideModal('edit-memory-modal')">Отмена</button>
-                    <button class="glass-btn primary" onclick="submitEditMemory()">Сохранить</button>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <div id="snooze-modal" class="modal-overlay hidden">
-        <div class="modal-content glass-panel">
-            <h3>Перенести задачу</h3>
-            <input type="date" id="snooze-date" class="glass-input">
-            <div class="modal-actions">
-                <button class="glass-btn" onclick="hideModal('snooze-modal')">Отмена</button>
-                <button class="glass-btn primary" onclick="submitSnooze()">Перенести</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="edit-task-modal" class="modal-overlay hidden">
-        <div class="modal-content glass-panel">
-            <h3>Изменить задачу</h3>
-            <textarea id="edit-task-text" class="glass-input" style="height:80px;"></textarea>
-            <div class="modal-actions">
-                <button class="glass-btn" onclick="hideModal('edit-task-modal')">Отмена</button>
-                <button class="glass-btn primary" onclick="submitEditTask()">Сохранить</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="manual-task-modal" class="modal-overlay hidden">
-        <div class="modal-content glass-panel">
-            <h3>Новая задача</h3>
-            <input type="text" id="manual-task-text" placeholder="Текст задачи" class="glass-input">
-            <input type="date" id="manual-task-date" class="glass-input">
-            <div class="modal-actions">
-                <button class="glass-btn" onclick="hideModal('manual-task-modal')">Отмена</button>
-                <button class="glass-btn primary" onclick="submitManualTask()">Создать</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="add-cat-modal" class="modal-overlay hidden">
-        <div class="modal-content glass-panel">
-            <h3 id="cat-modal-title">Новая категория</h3>
-            <input type="hidden" id="edit-cat-id">
-            <input type="text" id="new-cat-name" placeholder="Название (например: Авто)" class="glass-input">
-            <input type="text" id="new-cat-icon" placeholder="Иконка (эмодзи, напр. 🚗)" class="glass-input" maxlength="2">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px;">
-                <span style="font-size:14px;">Цвет тэга</span>
-                <input type="color" id="new-cat-color" value="#ffffff" class="glass-input" style="width:50px; height:30px; padding:0; cursor:pointer;">
-            </div>
-            <div class="modal-actions" style="margin-top:16px;">
-                <button class="glass-btn" onclick="hideModal('add-cat-modal')">Отмена</button>
-                <button class="glass-btn primary" onclick="submitCategory()">Сохранить</button>
-            </div>
-        </div>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/lucide@0.360.0/dist/umd/lucide.min.js"></script>
-    <script src="/static/app.js?v=5"></script>
+    <!-- Javascript -->
+    <script src="/static/app.js?v=4"></script>
+    <script>
+        lucide.createIcons();
+    </script>
 </body>
 </html>

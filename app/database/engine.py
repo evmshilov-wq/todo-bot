@@ -46,3 +46,26 @@ async def init_db():
             """))
         except Exception:
             pass
+            
+        # Life OS migrations
+        try:
+            await conn.execute(text("ALTER TABLE users ADD COLUMN onboarding_completed INTEGER DEFAULT 0"))
+            await conn.execute(text("ALTER TABLE users ADD COLUMN onboarding_state VARCHAR"))
+        except Exception:
+            pass
+        try:
+            await conn.execute(text("ALTER TABLE tasks ADD COLUMN sphere VARCHAR DEFAULT 'work'"))
+            await conn.execute(text("UPDATE tasks SET sphere = 'work' WHERE sphere IS NULL"))
+        except Exception:
+            pass
+        try:
+            await conn.execute(text("ALTER TABLE memories ADD COLUMN sphere VARCHAR DEFAULT 'work'"))
+            await conn.execute(text("UPDATE memories SET sphere = 'work' WHERE sphere IS NULL"))
+        except Exception:
+            pass
+        try:
+            await conn.execute(text("ALTER TABLE notes ADD COLUMN sphere VARCHAR DEFAULT 'work'"))
+            await conn.execute(text("UPDATE notes SET sphere = 'work' WHERE sphere IS NULL"))
+        except Exception:
+            pass
+
