@@ -181,6 +181,61 @@ body {
     border: 1px solid var(--border-color);
 }
 
+/* Date Picker Strip */
+.date-picker {
+    display: flex;
+    overflow-x: auto;
+    gap: 12px;
+    padding: 4px 0 16px 0;
+    margin: 0 -20px;
+    padding-left: 20px;
+    padding-right: 20px;
+    scrollbar-width: none; /* Firefox */
+}
+
+.date-picker::-webkit-scrollbar {
+    display: none; /* Chrome/Safari */
+}
+
+.date-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 52px;
+    height: 64px;
+    border-radius: 14px;
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.date-item .day-name {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+.date-item .day-number {
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.date-item.active {
+    background-color: var(--accent);
+    border-color: var(--accent);
+    color: white;
+}
+
+.date-item.active .day-name,
+.date-item.active .day-number {
+    color: white;
+}
+
 /* Items List */
 .items-list {
     display: flex;

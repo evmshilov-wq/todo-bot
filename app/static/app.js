@@ -12,7 +12,9 @@ const els = {
     userName: document.getElementById('user-initial'),
     tasksList: document.getElementById('tasks-list'),
     tasksCount: document.getElementById('tasks-count'),
+    tasksTitle: document.getElementById('tasks-title'),
     notesList: document.getElementById('notes-list'),
+    datePicker: document.getElementById('date-picker'),
     
     // Stats for spheres
     statWork: document.getElementById('stat-work'),
@@ -24,6 +26,8 @@ const els = {
     statFinance: document.getElementById('stat-finance'),
 };
 
+let selectedDate = new Date();
+
 function openView(viewId) {
     document.querySelectorAll('main').forEach(el => {
         el.classList.remove('view-active');
@@ -34,10 +38,65 @@ function openView(viewId) {
     
     // Load specific view data
     if (viewId === 'view-work') {
+        renderDatePicker();
         fetchTasks();
         fetchNotes();
     }
 }
+
+function renderDatePicker() {
+    els.datePicker.innerHTML = '';
+    const daysRu = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+    
+    // Generate dates from 14 days ago to 14 days ahead
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - 14);
+    
+    let html = '';
+    let selectedId = '';
+    
+    for (let i = 0; i <= 28; i++) {
+        const d = new Date(startDate);
+        d.setDate(d.getDate() + i);
+        
+        const isSelected = d.toDateString() === selectedDate.toDateString();
+        const dateStr = d.toISOString().split('T')[0];
+        const dayName = daysRu[d.getDay()];
+        const dayNum = d.getDate();
+        
+        const id = `date-item-${dateStr}`;
+        if (isSelected) selectedId = id;
+        
+        html += `
+            <div id="${id}" class="date-item ${isSelected ? 'active' : ''}" onclick="selectDate('${dateStr}')">
+                <span class="day-name">${dayName}</span>
+                <span class="day-number">${dayNum}</span>
+            </div>
+        `;
+    }
+    
+    els.datePicker.innerHTML = html;
+    
+    if (selectedId) {
+        const el = document.getElementById(selectedId);
+        if (el) el.scrollIntoView({ behavior: 'smooth', inline: 'center' });
+    }
+}
+
+function selectDate(dateStr) {
+    selectedDate = new Date(dateStr);
+    
+    const today = new Date();
+    if (selectedDate.toDateString() === today.toDateString()) {
+        els.tasksTitle.innerText = "Задачи на сегодня";
+    } else {
+        els.tasksTitle.innerText = `Задачи на ${selectedDate.toLocaleDateString('ru-RU')}`;
+    }
+    
+    renderDatePicker();
+    fetchTasks();
+}
+
 
 function openChat() {
     const overlay = document.getElementById('chat-overlay');
@@ -184,15 +243,17 @@ async function toggleVoice() {
 
 async function fetchTasks() {
     try {
+        const tzOffset = selectedDate.getTimezoneOffset() * 60000;
+        const localISOTime = (new Date(selectedDate.getTime() - tzOffset)).toISOString().split('T')[0];
+        
         const [todayRes, nodateRes] = await Promise.all([
-            fetch('/api/tasks', { headers }),
+            fetch(`/api/tasks?date=${localISOTime}`, { headers }),
             fetch('/api/tasks/nodate', { headers })
         ]);
         const todayData = await todayRes.json();
         const nodateData = await nodateRes.json();
         
         let allTasks = [...(todayData.tasks || []), ...(nodateData.tasks || [])];
-        // Filter by sphere "work" (for now just all)
         renderTasks(allTasks);
     } catch (e) {
         console.error(e);
