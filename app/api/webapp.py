@@ -296,6 +296,93 @@ async def api_ai_text(request: web.Request):
 
     return web.json_response({"status": "ok", "reply": reply_text, "mutations": mutations})
 
+@routes.post("/api/shortcut")
+async def api_shortcut(request: web.Request):
+    data = await request.json()
+    token = request.headers.get("Authorization", "")
+    from app.config import BOT_TOKEN
+    
+    # Simple security check: auth header must match bot token
+    if token != f"Bearer {BOT_TOKEN}":
+        return web.json_response({"error": "Unauthorized"}, status=401)
+        
+    user_id = data.get("chat_id")
+    text = data.get("text")
+    if not user_id or not text:
+        return web.json_response({"error": "Missing params"}, status=400)
+        
+    user_id = int(user_id)
+    
+    # 1. Fetch Context
+    user_tz = await get_user_timezone(user_id)
+    categories = await get_user_categories(user_id)
+    cat_names = [c["name"] for c in categories]
+    current_tasks = await get_tasks_without_date(user_id)
+    today_tasks = await get_tasks_for_today(user_id)
+    current_tasks.extend(today_tasks)
+    chat_history = await get_chat_history(user_id, limit=6)
+    memories = await get_memories(user_id)
+    notes = await get_notes(user_id)
+    
+    # 2. Save User Message
+    await add_chat_message(user_id, "user", text)
+    
+    # 3. Call AI
+    from app.services.ai_parser import process_chat_message
+    ai_response = await process_chat_message(text, chat_history, current_tasks, memories, notes, cat_names, user_tz)
+    reply_text = ai_response.get("reply", "Произошла ошибка обработки.")
+    
+    # 4. Save AI Reply
+    await add_chat_message(user_id, "assistant", reply_text)
+    
+    # 5. Process DB mutations
+    mutations = {"tasks": ai_response.get("tasks", []), "memories": ai_response.get("memories", []), "notes": ai_response.get("notes", [])}
+    
+    import json
+    for t in mutations["tasks"]:
+        action = t.get("action")
+        if action == "add":
+            cat_id = next((c["id"] for c in categories if c["name"] == t.get("category")), None)
+            is_tl = t.get("is_timeless", True)
+            g_id = await add_event_to_google(user_id, t.get("task_text", ""), t.get("date_time"), t.get("end_time"), is_tl, user_tz)
+            await add_task(user_id, t.get("task_text", ""), cat_id, t.get("date_time"), 1 if is_tl else 0, 0, None, t.get("end_time"), g_id, t.get("priority", "B"))
+        elif action == "edit" and t.get("task_id"):
+            if t.get("task_text"): await update_task_text_db(user_id, t["task_id"], t["task_text"])
+            if t.get("date_time") or t.get("is_timeless") is not None:
+                await update_task_datetime_db(user_id, t["task_id"], t.get("date_time"), 1 if t.get("is_timeless", True) else 0, None)
+        elif action == "delete" and t.get("task_id"):
+            await delete_task_db(user_id, t["task_id"])
+            
+    for m in mutations["memories"]:
+        action = m.get("action")
+        if action == "add" and m.get("fact_text"):
+            from app.services.embeddings import get_embedding
+            vec = get_embedding(m["fact_text"])
+            await add_memory(user_id, m["fact_text"], json.dumps(vec) if vec else None)
+        elif action == "delete" and m.get("memory_id"):
+            await delete_memory_db(user_id, m["memory_id"])
+            
+    for n in mutations["notes"]:
+        action = n.get("action")
+        if action == "add" and n.get("title") and n.get("content"):
+            from app.services.embeddings import get_embedding
+            vec = get_embedding(n["title"] + " " + n["content"])
+            await add_note(user_id, n["title"], n["content"], n.get("tags"), json.dumps(vec) if vec else None)
+        elif action == "edit" and n.get("note_id"):
+            from app.services.embeddings import get_embedding
+            vec = get_embedding(n.get("title", "") + " " + n.get("content", ""))
+            await update_note_db(user_id, n["note_id"], n.get("title"), n.get("content"), n.get("tags"), json.dumps(vec) if vec else None)
+        elif action == "delete" and n.get("note_id"):
+            await delete_note_db(user_id, n["note_id"])
+            
+    # Send a push notification back to the user via Telegram API
+    import aiohttp
+    async with aiohttp.ClientSession() as session:
+        url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+        await session.post(url, json={"chat_id": user_id, "text": f"✅ {reply_text}"})
+
+    return web.json_response({"status": "ok", "reply": reply_text})
+
 @routes.post("/api/ai_voice")
 async def api_ai_voice(request: web.Request):
     user_id = get_user_id(request)
