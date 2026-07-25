@@ -145,10 +145,29 @@
             <i data-lucide="message-circle"></i>
         </button>
 
+        <!-- AI Chat Overlay -->
+        <div id="chat-overlay" class="chat-overlay hidden">
+            <div class="chat-header">
+                <h2>Второй Мозг</h2>
+                <button class="icon-btn" onclick="closeChat()">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <div id="chat-messages" class="chat-messages">
+                <div class="loading">Загрузка диалога...</div>
+            </div>
+            <div id="ai-status" class="ai-status"></div>
+            <div class="chat-input-area">
+                <input type="text" id="ai-text-input" placeholder="Напиши мысли или задачи..." />
+                <button id="btn-voice" class="icon-btn" onclick="toggleVoice()"><i data-lucide="mic"></i></button>
+                <button id="btn-send" class="icon-btn primary-icon" onclick="sendText()"><i data-lucide="send"></i></button>
+            </div>
+        </div>
+
     </div>
 
     <!-- Javascript -->
-    <script src="/static/app.js?v=4"></script>
+    <script src="/static/app.js?v=5"></script>
     <script>
         lucide.createIcons();
     </script>
