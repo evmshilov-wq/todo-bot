@@ -413,6 +413,14 @@ async def get_hobby_logs_for_date(user_id: int, target_date: date):
         result = await session.scalars(query)
         return [{"id": h.id, "date_time": h.date_time, "hobby_name": h.hobby_name, "duration_minutes": h.duration_minutes, "notes": h.notes} for h in result.all()]
 
+async def get_all_hobby_logs(user_id: int, limit: int = 50):
+    async with async_session() as session:
+        query = select(HobbyLog).where(
+            HobbyLog.user_id == user_id
+        ).order_by(HobbyLog.date_time.desc()).limit(limit)
+        result = await session.scalars(query)
+        return [{"id": h.id, "date_time": h.date_time, "hobby_name": h.hobby_name, "duration_minutes": h.duration_minutes, "notes": h.notes} for h in result.all()]
+
 async def delete_hobby_log(user_id: int, log_id: int):
     async with async_session() as session:
         await session.execute(delete(HobbyLog).where(HobbyLog.id == log_id, HobbyLog.user_id == user_id))
