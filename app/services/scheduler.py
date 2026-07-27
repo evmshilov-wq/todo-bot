@@ -40,6 +40,20 @@ async def process_notifications():
                     await bot_instance.send_message(user.telegram_id, f"🌅 Доброе утро!\n\n{digest}")
             except Exception as e:
                 logging.error(f"Failed to send morning digest: {e}")
+                
+        # Check mid-day proactivity
+        if current_time_str == "14:00":
+            try:
+                tasks = await get_tasks_for_today(user.telegram_id)
+                pending = [t for t in tasks if not t.get('is_completed', False)]
+                if pending:
+                    tasks_list_str = "\n".join([f"• {t['text']}" for t in pending])
+                    stats_for_mid = {"pending_tasks": tasks_list_str}
+                    prompt = "Напиши проактивное дневное сообщение как личный менеджер. Упомяни, что осталась пара задач, мотивируй их закончить и предложи помощь с приоритизацией. Пиши коротко и бодро, задай вопрос в конце. Используй воспоминания и контекст пользователя."
+                    digest = await generate_ai_digest(stats_for_mid, "Пользователь", custom_prompt=prompt)
+                    await bot_instance.send_message(user.telegram_id, f"⚡ Дневной чек-ап:\n\n{digest}")
+            except Exception as e:
+                logging.error(f"Failed to send mid-day check: {e}")
                     
         # Check evening digest
         if user.evening_time and current_time_str == user.evening_time:
