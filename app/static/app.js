@@ -95,10 +95,17 @@ function selectDate(dateStr) {
     selectedDate = new Date(dateStr);
     
     const today = new Date();
-    if (selectedDate.toDateString() === today.toDateString()) {
+    const isToday = selectedDate.toDateString() === today.toDateString();
+    const dateFormatted = selectedDate.toLocaleDateString('ru-RU');
+    
+    if (isToday) {
         els.tasksTitle.innerText = "Задачи на сегодня";
+        document.getElementById('fitness-title').innerText = "Упражнения за сегодня";
+        document.getElementById('nutrition-title').innerText = "Приемы пищи за сегодня";
     } else {
-        els.tasksTitle.innerText = `Задачи на ${selectedDate.toLocaleDateString('ru-RU')}`;
+        els.tasksTitle.innerText = `Задачи на ${dateFormatted}`;
+        document.getElementById('fitness-title').innerText = `Упражнения на ${dateFormatted}`;
+        document.getElementById('nutrition-title').innerText = `Приемы пищи на ${dateFormatted}`;
     }
     
     const activeView = document.querySelector('main.view-active').id;
@@ -186,6 +193,8 @@ async function sendText() {
         // Refresh dashboard data
         fetchTasks();
         fetchNotes();
+        fetchFitness();
+        fetchNutrition();
         fetchProfileStats();
     } catch (e) {
         status.innerText = "Ошибка отправки";
@@ -234,6 +243,8 @@ async function toggleVoice() {
                     }
                     fetchTasks();
                     fetchNotes();
+                    fetchFitness();
+                    fetchNutrition();
                     fetchProfileStats();
                 } catch (e) {
                     status.innerText = "Ошибка распознавания";
@@ -443,10 +454,14 @@ async function saveManualFitness() {
     if (!name) return;
     
     try {
+        const tzOffset = selectedDate.getTimezoneOffset() * 60000;
+        const localISOTime = (new Date(selectedDate.getTime() - tzOffset)).toISOString().split('T')[0];
+        const dt = `${localISOTime} 12:00`;
+        
         await fetch('/api/fitness', {
             method: 'POST',
             headers,
-            body: JSON.stringify({ exercise_name: name, weight, sets, reps })
+            body: JSON.stringify({ exercise_name: name, weight, sets, reps, date_time: dt })
         });
         closeManualInput();
         fetchFitness();
@@ -466,10 +481,14 @@ async function saveManualNutrition() {
     if (!name) return;
     
     try {
+        const tzOffset = selectedDate.getTimezoneOffset() * 60000;
+        const localISOTime = (new Date(selectedDate.getTime() - tzOffset)).toISOString().split('T')[0];
+        const dt = `${localISOTime} 12:00`;
+        
         await fetch('/api/nutrition', {
             method: 'POST',
             headers,
-            body: JSON.stringify({ meal_name: name, calories: kcal, protein: p, fat: f, carbs: c })
+            body: JSON.stringify({ meal_name: name, calories: kcal, protein: p, fat: f, carbs: c, date_time: dt })
         });
         closeManualInput();
         fetchNutrition();
