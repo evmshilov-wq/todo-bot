@@ -561,3 +561,66 @@ async def get_health_chart_data(user_id: int, days: int = 14):
                 # Store the max sleep hours for that day (in case of multiple entries, max is usually best)
                 data[date_only] = max(data[date_only], log.sleep_hours)
         return [{"date": k, "sleep_hours": v} for k, v in data.items()]
+
+async def get_activity_heatmap_data(user_id: int, year: int, month: int):
+    # Returns a dictionary like {"2026-07-01": 5, "2026-07-02": 0, ...}
+    start_date = f"{year}-{month:02d}-01"
+    if month == 12:
+        end_date = f"{year+1}-01-01"
+    else:
+        end_date = f"{year}-{month+1:02d}-01"
+        
+    async with async_session() as session:
+        # Tasks (completed) = +1
+        tasks = await session.scalars(select(Task.date_time).where(
+            Task.user_id == user_id, Task.is_completed == 1,
+            Task.date_time >= start_date, Task.date_time < end_date
+        ))
+        
+        # Workouts = +3 per record (or +3 per day if any)
+        workouts = await session.scalars(select(WorkoutLog.date_time).where(
+            WorkoutLog.user_id == user_id,
+            WorkoutLog.date_time >= start_date, WorkoutLog.date_time < end_date
+        ))
+        
+        # Nutrition = +1 per record
+        nutrition = await session.scalars(select(NutritionLog.date_time).where(
+            NutritionLog.user_id == user_id,
+            NutritionLog.date_time >= start_date, NutritionLog.date_time < end_date
+        ))
+        
+        # Interactions = +2 per record
+        interactions = await session.scalars(select(InteractionLog.date_time).where(
+            InteractionLog.user_id == user_id,
+            InteractionLog.date_time >= start_date, InteractionLog.date_time < end_date
+        ))
+        
+        # Hobbies = +2 per record
+        hobbies = await session.scalars(select(HobbyLog.date_time).where(
+            HobbyLog.user_id == user_id,
+            HobbyLog.date_time >= start_date, HobbyLog.date_time < end_date
+        ))
+        
+        # Health = +1 per record
+        health = await session.scalars(select(HealthLog.date_time).where(
+            HealthLog.user_id == user_id,
+            HealthLog.date_time >= start_date, HealthLog.date_time < end_date
+        ))
+        
+        from collections import defaultdict
+        scores = defaultdict(int)
+        
+        for t in tasks.all():
+            if t: scores[t.split(' ')[0]] += 1
+        for w in workouts.all():
+            if w: scores[w.split(' ')[0]] += 3
+        for n in nutrition.all():
+            if n: scores[n.split(' ')[0]] += 1
+        for i in interactions.all():
+            if i: scores[i.split(' ')[0]] += 2
+        for h in hobbies.all():
+            if h: scores[h.split(' ')[0]] += 2
+        for he in health.all():
+            if he: scores[he.split(' ')[0]] += 1
+            
+        return dict(scores)

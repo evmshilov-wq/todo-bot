@@ -256,6 +256,21 @@ async def api_get_analytics(request: web.Request):
     digest = await generate_ai_digest(stats, "Пользователь")
     return web.json_response({"stats": stats, "digest": digest})
 
+@routes.get("/api/activity_heatmap")
+async def api_get_activity_heatmap(request: web.Request):
+    user_id = get_user_id(request)
+    if not user_id: return web.json_response({"error": "Unauthorized"}, status=401)
+    
+    try:
+        year = int(request.query.get("year", datetime.now().year))
+        month = int(request.query.get("month", datetime.now().month))
+    except ValueError:
+        return web.json_response({"error": "Invalid year or month"}, status=400)
+        
+    from app.database.requests import get_activity_heatmap_data
+    data = await get_activity_heatmap_data(user_id, year, month)
+    return web.json_response({"heatmap": data, "year": year, "month": month})
+
 @routes.delete("/api/tasks/{task_id}")
 async def api_delete_task(request: web.Request):
     user_id = get_user_id(request)

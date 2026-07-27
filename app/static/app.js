@@ -29,6 +29,8 @@ const els = {
 let selectedDate = new Date();
 let chartFitness = null;
 let chartSleep = null;
+let heatmapYear = new Date().getFullYear();
+let heatmapMonth = new Date().getMonth() + 1;
 
 function renderFitnessChart(data) {
     const ctx = document.getElementById('fitnessChart');
@@ -533,10 +535,100 @@ async function fetchProfileStats() {
         const statHobbies = document.getElementById('stat-hobbies');
         if (statHobbies) statHobbies.innerText = data.hobbies_count > 0 ? `Записей сегодня: ${data.hobbies_count}` : 'Нет записей';
         
+        await fetchAndRenderHeatmap();
     } catch(e) {
         console.error(e);
     }
 }
+
+async function fetchAndRenderHeatmap() {
+    try {
+        const res = await fetch(`/api/activity_heatmap?year=${heatmapYear}&month=${heatmapMonth}`, { headers });
+        const data = await res.json();
+        
+        const monthNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
+        document.getElementById('heatmap-month-title').innerText = `${monthNames[heatmapMonth - 1]} ${heatmapYear}`;
+        
+        const grid = document.getElementById('heatmap-calendar');
+        grid.innerHTML = '';
+        
+        // Day labels
+        const days = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+        days.forEach(d => {
+            grid.innerHTML += `<div class="heatmap-day-label">${d}</div>`;
+        });
+        
+        const firstDay = new Date(heatmapYear, heatmapMonth - 1, 1).getDay();
+        const daysInMonth = new Date(heatmapYear, heatmapMonth, 0).getDate();
+        
+        // Adjust JS getDay() where Sunday is 0, we want Monday to be 0
+        let startOffset = firstDay === 0 ? 6 : firstDay - 1;
+        
+        // Empty cells before start of month
+        for (let i = 0; i < startOffset; i++) {
+            grid.innerHTML += `<div class="heatmap-cell"></div>`;
+        }
+        
+        // Month days
+        for (let d = 1; d <= daysInMonth; d++) {
+            const dateStr = `${heatmapYear}-${String(heatmapMonth).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+            const score = data.heatmap[dateStr] || 0;
+            
+            // Map score to 1-5 intensity
+            let intensity = 0;
+            if (score > 0) {
+                if (score <= 3) intensity = 1;
+                else if (score <= 5) intensity = 2;
+                else if (score <= 7) intensity = 3;
+                else if (score <= 10) intensity = 4;
+                else intensity = 5;
+            }
+            
+            grid.innerHTML += `<div class="heatmap-cell ${score > 0 ? 'has-date' : ''}" data-score="${intensity}">${d}</div>`;
+        }
+    } catch (e) {
+        console.error("Heatmap error:", e);
+    }
+}
+
+window.changeHeatmapMonth = function(delta) {
+    heatmapMonth += delta;
+    if (heatmapMonth > 12) {
+        heatmapMonth = 1;
+        heatmapYear++;
+    } else if (heatmapMonth < 1) {
+        heatmapMonth = 12;
+        heatmapYear--;
+    }
+    fetchAndRenderHeatmap();
+};
+
+let touchstartX = 0;
+let touchendX = 0;
+    
+function handleHeatmapSwipe() {
+    if (touchendX < touchstartX - 50) {
+        // Swipe left
+        changeHeatmapMonth(1);
+    }
+    if (touchendX > touchstartX + 50) {
+        // Swipe right
+        changeHeatmapMonth(-1);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const calendarElement = document.getElementById('heatmap-calendar');
+    if (calendarElement) {
+        calendarElement.addEventListener('touchstart', e => {
+            touchstartX = e.changedTouches[0].screenX;
+        });
+        calendarElement.addEventListener('touchend', e => {
+            touchendX = e.changedTouches[0].screenX;
+            handleHeatmapSwipe();
+        });
+    }
+});
 
 async function fetchFitness() {
     try {

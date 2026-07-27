@@ -116,6 +116,21 @@
                     </div>
                 </div>
             </div>
+            </div>
+
+            <!-- Activity Heatmap Calendar -->
+            <div class="content-section" style="margin-top: 24px; margin-bottom: 24px;">
+                <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <h3 id="heatmap-month-title" style="font-size: 16px;">Активность</h3>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="icon-btn" onclick="changeHeatmapMonth(-1)" style="padding: 4px; background: rgba(255,255,255,0.05); border-radius: 8px;"><i data-lucide="chevron-left" style="width: 16px; height: 16px;"></i></button>
+                        <button class="icon-btn" onclick="changeHeatmapMonth(1)" style="padding: 4px; background: rgba(255,255,255,0.05); border-radius: 8px;"><i data-lucide="chevron-right" style="width: 16px; height: 16px;"></i></button>
+                    </div>
+                </div>
+                <div id="heatmap-calendar" class="heatmap-grid">
+                    <!-- JS will populate -->
+                </div>
+            </div>
         </main>
 
         <!-- Detailed View: Work (Sphere 1 MVP) -->
@@ -507,7 +522,7 @@
     </div>
 
     <!-- Javascript -->
-    <script src="/static/app.js?v=22"></script>
+    <script src="/static/app.js?v=23"></script>
     <script>
         lucide.createIcons();
     </script>
