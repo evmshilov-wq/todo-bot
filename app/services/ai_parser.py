@@ -42,11 +42,30 @@ class OnboardingActionModel(BaseModel):
     action: Literal["update_state", "complete"] = Field(description="Действие с онбордингом")
     new_state: Optional[str] = Field(None, description="Новое состояние онбординга, например 'вопрос 2'")
 
+class WorkoutActionModel(BaseModel):
+    action: Literal["add", "delete"] = Field(description="add или delete")
+    exercise_name: str = Field(description="Название упражнения (например, 'Жим лежа')")
+    weight: Optional[str] = Field(None, description="Вес снаряда (например, '80', 'Свой вес')")
+    sets: Optional[int] = Field(1, description="Количество подходов")
+    reps: Optional[int] = Field(1, description="Количество повторений")
+    date_time: Optional[str] = Field(None, description="Дата в формате YYYY-MM-DD HH:MM")
+
+class NutritionActionModel(BaseModel):
+    action: Literal["add", "delete"] = Field(description="add или delete")
+    meal_name: str = Field(description="Что съел пользователь (например, 'Борщ')")
+    calories: Optional[int] = Field(0, description="Калорийность (ккал)")
+    protein: Optional[int] = Field(0, description="Белки (г)")
+    carbs: Optional[int] = Field(0, description="Углеводы (г)")
+    fat: Optional[int] = Field(0, description="Жиры (г)")
+    date_time: Optional[str] = Field(None, description="Дата в формате YYYY-MM-DD HH:MM")
+
 class AIChatResponseModel(BaseModel):
     reply: str = Field(description="Эмпатичный и естественный ответ пользователю. Без роботизированных фраз.")
     tasks: List[TaskActionModel] = Field(default_factory=list, description="Действия с задачами, если требуются")
     memories: List[MemoryActionModel] = Field(default_factory=list, description="Новые факты для запоминания или удаления")
     notes: List[NoteActionModel] = Field(default_factory=list, description="Длинные заметки/рассуждения/статьи")
+    workouts: List[WorkoutActionModel] = Field(default_factory=list, description="Тренировки (упражнения, подходы, вес)")
+    nutrition: List[NutritionActionModel] = Field(default_factory=list, description="Приемы пищи (еда, БЖУ, калории)")
     onboarding: Optional[OnboardingActionModel] = Field(None, description="Управление статусом интервью/онбординга")
 
 
@@ -164,6 +183,8 @@ def get_ai_system_prompt(available_categories: list, user_tz: str, current_tasks
 - Если указан час, обязательно запиши его в date_time, а параметр `is_timeless` сделай false. Если точного времени нет, то `is_timeless` = true.
 - Если пользователь рассказывает о своих мыслях, идеях, планах, дневниковых записях — ОБЯЗАТЕЛЬНО создай Заметку (`notes`, action="add", title, content, tags, sphere). Пиши content красиво, используй Markdown. ВАЖНО: Если в `reply` ты говоришь "Я записал идею/заметку", ты ОБЯЗАН добавить объект в массив `notes`!
 - Вытаскивай важные факты о пользователе (имя, кто его друзья, место работы, интересы, долгосрочные цели) и сохраняй их в `memories` (action="add", sphere).
+- ТРЕНИРОВКИ: Если пользователь диктует упражнение (например, "Жим лежа 80 кг 3 по 10"), добавь объект в массив `workouts` (exercise_name="Жим лежа", weight="80", sets=3, reps=10, date_time).
+- ПИТАНИЕ: Если пользователь пишет, что он съел (например, "Борщ"), или прислал ФОТО еды, оцени Калории и БЖУ "на глаз" (через свои знания или анализ фото) и запиши в массив `nutrition` (meal_name, calories, protein, carbs, fat, date_time). Пиши точные, но приблизительные числа, не оставляй нули, если еда известна.
 - Приоритеты задач: A (критично), B (важно), C (рутина), D (бэклог/несрочно).
 """
 
@@ -174,11 +195,18 @@ def format_history_for_gemini(chat_history: list) -> list:
         contents.append(genai_types.Content(role=role, parts=[genai_types.Part.from_text(text=msg["text"])]))
     return contents
 
-async def process_chat_message(user_text: str, chat_history: list, current_tasks: list, memories: list, notes: list, available_categories: list, user_tz: str, user_profile: dict = None) -> dict:
+async def process_chat_message(user_text: str, chat_history: list, current_tasks: list, memories: list, notes: list, available_categories: list, user_tz: str, user_profile: dict = None, image_path: str = None) -> dict:
     rel_mem, rel_notes = fetch_relevant_context(user_text, memories, notes)
     system_prompt = get_ai_system_prompt(available_categories, user_tz, current_tasks, rel_mem, rel_notes, user_profile)
     contents = format_history_for_gemini(chat_history)
-    contents.append(genai_types.Content(role="user", parts=[genai_types.Part.from_text(text=user_text)]))
+    
+    parts = []
+    if image_path:
+        uploaded_img = client.files.upload(file=image_path)
+        parts.append(genai_types.Part.from_uri(file_uri=uploaded_img.uri, mime_type=uploaded_img.mime_type))
+    
+    parts.append(genai_types.Part.from_text(text=user_text))
+    contents.append(genai_types.Content(role="user", parts=parts))
     
     try:
         response = client.models.generate_content(

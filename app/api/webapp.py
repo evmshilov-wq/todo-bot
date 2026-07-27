@@ -216,6 +216,51 @@ async def api_complete_habit(request: web.Request):
         return web.json_response({"status": "ok", "xp_earned": 15})
     return web.json_response({"status": "already_completed"})
 
+@routes.get("/api/fitness")
+async def api_get_fitness(request: web.Request):
+    user_id = get_user_id(request)
+    if not user_id: return web.json_response({"error": "Unauthorized"}, status=401)
+    date_str = request.query.get("date")
+    if not date_str: return web.json_response({"error": "Date required"}, status=400)
+    target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+    from app.database.requests import get_workouts_for_date
+    workouts = await get_workouts_for_date(user_id, target_date)
+    return web.json_response({"workouts": workouts})
+
+@routes.post("/api/fitness")
+async def api_add_fitness(request: web.Request):
+    user_id = get_user_id(request)
+    if not user_id: return web.json_response({"error": "Unauthorized"}, status=401)
+    data = await request.json()
+    from app.database.requests import add_workout, get_user_timezone
+    user_tz = await get_user_timezone(user_id)
+    dt = data.get("date_time") or datetime.now(ZoneInfo(user_tz)).strftime("%Y-%m-%d %H:%M")
+    await add_workout(user_id, dt, data.get("exercise_name"), data.get("weight"), data.get("sets", 1), data.get("reps", 1))
+    return web.json_response({"status": "ok"})
+
+@routes.get("/api/nutrition")
+async def api_get_nutrition(request: web.Request):
+    user_id = get_user_id(request)
+    if not user_id: return web.json_response({"error": "Unauthorized"}, status=401)
+    date_str = request.query.get("date")
+    if not date_str: return web.json_response({"error": "Date required"}, status=400)
+    target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+    from app.database.requests import get_nutrition_for_date
+    nutrition = await get_nutrition_for_date(user_id, target_date)
+    return web.json_response({"nutrition": nutrition})
+
+@routes.post("/api/nutrition")
+async def api_add_nutrition(request: web.Request):
+    user_id = get_user_id(request)
+    if not user_id: return web.json_response({"error": "Unauthorized"}, status=401)
+    data = await request.json()
+    from app.database.requests import add_nutrition, get_user_timezone
+    user_tz = await get_user_timezone(user_id)
+    dt = data.get("date_time") or datetime.now(ZoneInfo(user_tz)).strftime("%Y-%m-%d %H:%M")
+    await add_nutrition(user_id, dt, data.get("meal_name"), data.get("calories", 0), data.get("protein", 0), data.get("carbs", 0), data.get("fat", 0))
+    return web.json_response({"status": "ok"})
+
+
 @routes.post("/api/ai_text")
 async def api_ai_text(request: web.Request):
     user_id = get_user_id(request)
@@ -259,7 +304,13 @@ async def api_ai_text(request: web.Request):
     await add_chat_message(user_id, "assistant", reply_text)
     
     # 5. Process DB mutations
-    mutations = {"tasks": ai_response.get("tasks", []), "memories": ai_response.get("memories", []), "notes": ai_response.get("notes", [])}
+    mutations = {
+        "tasks": ai_response.get("tasks", []), 
+        "memories": ai_response.get("memories", []), 
+        "notes": ai_response.get("notes", []),
+        "workouts": ai_response.get("workouts", []),
+        "nutrition": ai_response.get("nutrition", [])
+    }
     import logging
     logging.info(f"Parsed AI text mutations: {mutations}")
     
@@ -304,6 +355,19 @@ async def api_ai_text(request: web.Request):
             await update_onboarding(user_id, 1, None)
         elif onboarding.get("action") == "update_state" and onboarding.get("new_state"):
             await update_onboarding(user_id, 0, onboarding.get("new_state"))
+            
+    # 7. Process Workouts & Nutrition
+    from app.database.requests import add_workout, delete_workout_db, add_nutrition, delete_nutrition_db
+    for w in mutations["workouts"]:
+        if w.get("action") == "add" and w.get("exercise_name"):
+            dt = w.get("date_time") or datetime.now(ZoneInfo(user_tz)).strftime("%Y-%m-%d %H:%M")
+            await add_workout(user_id, dt, w["exercise_name"], w.get("weight"), w.get("sets", 1), w.get("reps", 1))
+        # Note: delete logic can be added if AI supplies workout_id, but usually AI adds logs.
+
+    for n in mutations["nutrition"]:
+        if n.get("action") == "add" and n.get("meal_name"):
+            dt = n.get("date_time") or datetime.now(ZoneInfo(user_tz)).strftime("%Y-%m-%d %H:%M")
+            await add_nutrition(user_id, dt, n["meal_name"], n.get("calories", 0), n.get("protein", 0), n.get("carbs", 0), n.get("fat", 0))
 
     return web.json_response({"status": "ok", "reply": reply_text, "mutations": mutations})
 
@@ -454,7 +518,13 @@ async def api_ai_voice(request: web.Request):
     await add_chat_message(user_id, "assistant", reply_text)
     
     # 5. Process DB mutations
-    mutations = {"tasks": ai_response.get("tasks", []), "memories": ai_response.get("memories", []), "notes": ai_response.get("notes", [])}
+    mutations = {
+        "tasks": ai_response.get("tasks", []), 
+        "memories": ai_response.get("memories", []), 
+        "notes": ai_response.get("notes", []),
+        "workouts": ai_response.get("workouts", []),
+        "nutrition": ai_response.get("nutrition", [])
+    }
     import logging
     logging.info(f"Parsed AI voice mutations: {mutations}")
     
@@ -499,6 +569,18 @@ async def api_ai_voice(request: web.Request):
             await update_onboarding(user_id, 1, None)
         elif onboarding.get("action") == "update_state" and onboarding.get("new_state"):
             await update_onboarding(user_id, 0, onboarding.get("new_state"))
+            
+    # 7. Process Workouts & Nutrition
+    from app.database.requests import add_workout, delete_workout_db, add_nutrition, delete_nutrition_db
+    for w in mutations["workouts"]:
+        if w.get("action") == "add" and w.get("exercise_name"):
+            dt = w.get("date_time") or datetime.now(ZoneInfo(user_tz)).strftime("%Y-%m-%d %H:%M")
+            await add_workout(user_id, dt, w["exercise_name"], w.get("weight"), w.get("sets", 1), w.get("reps", 1))
+
+    for n in mutations["nutrition"]:
+        if n.get("action") == "add" and n.get("meal_name"):
+            dt = n.get("date_time") or datetime.now(ZoneInfo(user_tz)).strftime("%Y-%m-%d %H:%M")
+            await add_nutrition(user_id, dt, n["meal_name"], n.get("calories", 0), n.get("protein", 0), n.get("carbs", 0), n.get("fat", 0))
 
     return web.json_response({"status": "ok", "reply": reply_text, "mutations": mutations})
 

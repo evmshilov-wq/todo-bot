@@ -138,8 +138,72 @@
         </main>
         
         <!-- Placeholders for other views for Step 2 -->
-        <main id="view-fitness" class="view-hidden"><div class="view-header"><button class="icon-btn-back" onclick="openView('view-dashboard')"><i data-lucide="chevron-left"></i> Назад</button><h2>Тренировки</h2></div><div class="content-section"><p>В разработке (Шаг 2)</p></div></main>
-        <main id="view-nutrition" class="view-hidden"><div class="view-header"><button class="icon-btn-back" onclick="openView('view-dashboard')"><i data-lucide="chevron-left"></i> Назад</button><h2>Питание</h2></div><div class="content-section"><p>В разработке (Шаг 2)</p></div></main>
+        <!-- Detailed View: Fitness -->
+        <main id="view-fitness" class="view-hidden">
+            <div class="view-header">
+                <button class="icon-btn-back" onclick="openView('view-dashboard')">
+                    <i data-lucide="chevron-left"></i> Назад
+                </button>
+                <h2>Тренировки</h2>
+                <button class="icon-btn primary-icon" onclick="openManualInput('fitness')">
+                    <i data-lucide="plus"></i>
+                </button>
+            </div>
+            <div class="content-section">
+                <!-- Date Picker Strip for Fitness -->
+                <div id="fitness-date-picker" class="date-picker"></div>
+                <div class="section-header" style="margin-top: 16px;">
+                    <h3 id="fitness-title">Упражнения за день</h3>
+                </div>
+                <div id="fitness-list" class="items-list">
+                    <div class="loading">Загрузка тренировок...</div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Detailed View: Nutrition -->
+        <main id="view-nutrition" class="view-hidden">
+            <div class="view-header">
+                <button class="icon-btn-back" onclick="openView('view-dashboard')">
+                    <i data-lucide="chevron-left"></i> Назад
+                </button>
+                <h2>Питание</h2>
+                <button class="icon-btn primary-icon" onclick="openManualInput('nutrition')">
+                    <i data-lucide="plus"></i>
+                </button>
+            </div>
+            <div class="content-section">
+                <!-- Date Picker Strip for Nutrition -->
+                <div id="nutrition-date-picker" class="date-picker"></div>
+                
+                <!-- Macro Summary Bar -->
+                <div id="nutrition-summary" class="macro-summary">
+                    <div class="macro-item">
+                        <span class="macro-label">Ккал</span>
+                        <strong class="macro-value" id="macro-kcal">0</strong>
+                    </div>
+                    <div class="macro-item">
+                        <span class="macro-label">Белки</span>
+                        <strong class="macro-value" id="macro-protein">0g</strong>
+                    </div>
+                    <div class="macro-item">
+                        <span class="macro-label">Жиры</span>
+                        <strong class="macro-value" id="macro-fat">0g</strong>
+                    </div>
+                    <div class="macro-item">
+                        <span class="macro-label">Углеводы</span>
+                        <strong class="macro-value" id="macro-carbs">0g</strong>
+                    </div>
+                </div>
+
+                <div class="section-header" style="margin-top: 16px;">
+                    <h3 id="nutrition-title">Приемы пищи</h3>
+                </div>
+                <div id="nutrition-list" class="items-list">
+                    <div class="loading">Загрузка питания...</div>
+                </div>
+            </div>
+        </main>
         <main id="view-relationships" class="view-hidden"><div class="view-header"><button class="icon-btn-back" onclick="openView('view-dashboard')"><i data-lucide="chevron-left"></i> Назад</button><h2>Отношения</h2></div><div class="content-section"><p>В разработке (Шаг 3)</p></div></main>
         <main id="view-hobbies" class="view-hidden"><div class="view-header"><button class="icon-btn-back" onclick="openView('view-dashboard')"><i data-lucide="chevron-left"></i> Назад</button><h2>Хобби</h2></div><div class="content-section"><p>В разработке</p></div></main>
         <main id="view-health" class="view-hidden"><div class="view-header"><button class="icon-btn-back" onclick="openView('view-dashboard')"><i data-lucide="chevron-left"></i> Назад</button><h2>Здоровье</h2></div><div class="content-section"><p>Утренние чекапы работают через чат Telegram.</p></div></main>
@@ -166,6 +230,68 @@
                 <input type="text" id="ai-text-input" placeholder="Напиши мысли или задачи..." />
                 <button id="btn-voice" class="icon-btn" onclick="toggleVoice()"><i data-lucide="mic"></i></button>
                 <button id="btn-send" class="icon-btn primary-icon" onclick="sendText()"><i data-lucide="send"></i></button>
+            </div>
+        </div>
+
+        <!-- Manual Input Modal (Shared) -->
+        <div id="manual-modal" class="chat-overlay hidden" style="justify-content: flex-end;">
+            <div class="chat-header">
+                <h2 id="manual-title">Добавить</h2>
+                <button class="icon-btn" onclick="closeManualInput()">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <div class="modal-body" style="padding: 16px; background: var(--bg-primary); flex-grow: 1;">
+                
+                <!-- Fitness Form -->
+                <div id="form-fitness" class="hidden">
+                    <div class="form-group">
+                        <label>Упражнение</label>
+                        <input type="text" id="fitness-name" placeholder="Например: Жим лежа">
+                    </div>
+                    <div class="form-group">
+                        <label>Вес</label>
+                        <input type="text" id="fitness-weight" placeholder="Например: 80 кг">
+                    </div>
+                    <div style="display: flex; gap: 12px;">
+                        <div class="form-group" style="flex: 1;">
+                            <label>Подходы</label>
+                            <input type="number" id="fitness-sets" value="3">
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label>Повторения</label>
+                            <input type="number" id="fitness-reps" value="10">
+                        </div>
+                    </div>
+                    <button class="primary-btn" onclick="saveManualFitness()" style="width: 100%; margin-top: 16px;">Сохранить</button>
+                </div>
+
+                <!-- Nutrition Form -->
+                <div id="form-nutrition" class="hidden">
+                    <div class="form-group">
+                        <label>Блюдо</label>
+                        <input type="text" id="nutrition-name" placeholder="Например: Борщ с мясом">
+                    </div>
+                    <div class="form-group">
+                        <label>Калории (ккал)</label>
+                        <input type="number" id="nutrition-kcal" placeholder="0">
+                    </div>
+                    <div style="display: flex; gap: 12px; margin-top: 12px;">
+                        <div class="form-group" style="flex: 1;">
+                            <label>Белки</label>
+                            <input type="number" id="nutrition-p" placeholder="0">
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label>Жиры</label>
+                            <input type="number" id="nutrition-f" placeholder="0">
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label>Углеводы</label>
+                            <input type="number" id="nutrition-c" placeholder="0">
+                        </div>
+                    </div>
+                    <button class="primary-btn" onclick="saveManualNutrition()" style="width: 100%; margin-top: 16px;">Сохранить</button>
+                </div>
             </div>
         </div>
 

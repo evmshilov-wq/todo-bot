@@ -67,6 +67,27 @@ class ChatMessage(Base):
     text: Mapped[str] = mapped_column(String)
     created_at: Mapped[str] = mapped_column(String) # ISO 8601 string
 
+class WorkoutLog(Base):
+    __tablename__ = 'workout_logs'
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(BigInteger)
+    date_time: Mapped[str] = mapped_column(String)
+    exercise_name: Mapped[str] = mapped_column(String)
+    weight: Mapped[str] = mapped_column(String, nullable=True) # e.g. "80", "bodyweight"
+    sets: Mapped[int] = mapped_column(Integer, default=1)
+    reps: Mapped[int] = mapped_column(Integer, default=1)
+
+class NutritionLog(Base):
+    __tablename__ = 'nutrition_logs'
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(BigInteger)
+    date_time: Mapped[str] = mapped_column(String)
+    meal_name: Mapped[str] = mapped_column(String)
+    calories: Mapped[int] = mapped_column(Integer, default=0)
+    protein: Mapped[int] = mapped_column(Integer, default=0)
+    carbs: Mapped[int] = mapped_column(Integer, default=0)
+    fat: Mapped[int] = mapped_column(Integer, default=0) # ISO 8601 string
+
 class Memory(Base):
     __tablename__ = 'memories'
     id: Mapped[int] = mapped_column(primary_key=True)

@@ -2,7 +2,7 @@ from datetime import datetime, date, timedelta
 from sqlalchemy import select, update, delete
 from zoneinfo import ZoneInfo
 from app.database.engine import async_session
-from app.database.models import User, Category, Task, Habit, HabitLog
+from app.database.models import User, Category, Task, Habit, HabitLog, ChatMessage, Memory, Note, WorkoutLog, NutritionLog
 from app.config import DEFAULT_TZ
 
 async def get_all_users():
@@ -325,3 +325,46 @@ async def delete_note_db(user_id: int, note_id: int):
     async with async_session() as session:
         await session.execute(delete(Note).where(Note.id == note_id, Note.user_id == user_id))
         await session.commit()
+
+# --- Workout Logs ---
+async def add_workout(user_id: int, date_time: str, exercise_name: str, weight: str = None, sets: int = 1, reps: int = 1):
+    async with async_session() as session:
+        session.add(WorkoutLog(user_id=user_id, date_time=date_time, exercise_name=exercise_name, weight=weight, sets=sets, reps=reps))
+        await session.commit()
+
+async def get_workouts_for_date(user_id: int, target_date: date):
+    async with async_session() as session:
+        date_str = target_date.strftime("%Y-%m-%d")
+        query = select(WorkoutLog).where(
+            WorkoutLog.user_id == user_id,
+            WorkoutLog.date_time.startswith(date_str)
+        ).order_by(WorkoutLog.id.desc())
+        result = await session.scalars(query)
+        return [{"id": w.id, "date_time": w.date_time, "exercise_name": w.exercise_name, "weight": w.weight, "sets": w.sets, "reps": w.reps} for w in result.all()]
+
+async def delete_workout_db(user_id: int, log_id: int):
+    async with async_session() as session:
+        await session.execute(delete(WorkoutLog).where(WorkoutLog.id == log_id, WorkoutLog.user_id == user_id))
+        await session.commit()
+
+# --- Nutrition Logs ---
+async def add_nutrition(user_id: int, date_time: str, meal_name: str, calories: int = 0, protein: int = 0, carbs: int = 0, fat: int = 0):
+    async with async_session() as session:
+        session.add(NutritionLog(user_id=user_id, date_time=date_time, meal_name=meal_name, calories=calories, protein=protein, carbs=carbs, fat=fat))
+        await session.commit()
+
+async def get_nutrition_for_date(user_id: int, target_date: date):
+    async with async_session() as session:
+        date_str = target_date.strftime("%Y-%m-%d")
+        query = select(NutritionLog).where(
+            NutritionLog.user_id == user_id,
+            NutritionLog.date_time.startswith(date_str)
+        ).order_by(NutritionLog.id.desc())
+        result = await session.scalars(query)
+        return [{"id": n.id, "date_time": n.date_time, "meal_name": n.meal_name, "calories": n.calories, "protein": n.protein, "carbs": n.carbs, "fat": n.fat} for n in result.all()]
+
+async def delete_nutrition_db(user_id: int, log_id: int):
+    async with async_session() as session:
+        await session.execute(delete(NutritionLog).where(NutritionLog.id == log_id, NutritionLog.user_id == user_id))
+        await session.commit()
+

@@ -38,14 +38,22 @@ function openView(viewId) {
     
     // Load specific view data
     if (viewId === 'view-work') {
-        renderDatePicker();
+        renderDatePicker('date-picker');
         fetchTasks();
         fetchNotes();
+    } else if (viewId === 'view-fitness') {
+        renderDatePicker('fitness-date-picker');
+        fetchFitness();
+    } else if (viewId === 'view-nutrition') {
+        renderDatePicker('nutrition-date-picker');
+        fetchNutrition();
     }
 }
 
-function renderDatePicker() {
-    els.datePicker.innerHTML = '';
+function renderDatePicker(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.innerHTML = '';
     const daysRu = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
     
     // Generate dates from 14 days ago to 14 days ahead
@@ -75,7 +83,7 @@ function renderDatePicker() {
         `;
     }
     
-    els.datePicker.innerHTML = html;
+    container.innerHTML = html;
     
     if (selectedId) {
         const el = document.getElementById(selectedId);
@@ -93,8 +101,17 @@ function selectDate(dateStr) {
         els.tasksTitle.innerText = `Задачи на ${selectedDate.toLocaleDateString('ru-RU')}`;
     }
     
-    renderDatePicker();
-    fetchTasks();
+    const activeView = document.querySelector('main.view-active').id;
+    if (activeView === 'view-work') {
+        renderDatePicker('date-picker');
+        fetchTasks();
+    } else if (activeView === 'view-fitness') {
+        renderDatePicker('fitness-date-picker');
+        fetchFitness();
+    } else if (activeView === 'view-nutrition') {
+        renderDatePicker('nutrition-date-picker');
+        fetchNutrition();
+    }
 }
 
 
@@ -318,6 +335,142 @@ async function fetchProfileStats() {
         els.statHealth.innerText = `Ур ${data.level || 1} | XP ${data.xp || 0}`;
     } catch(e) {
         console.error(e);
+    }
+}
+
+async function fetchFitness() {
+    try {
+        const tzOffset = selectedDate.getTimezoneOffset() * 60000;
+        const localISOTime = (new Date(selectedDate.getTime() - tzOffset)).toISOString().split('T')[0];
+        const res = await fetch(`/api/fitness?date=${localISOTime}`, { headers });
+        const data = await res.json();
+        
+        const list = document.getElementById('fitness-list');
+        if (data.workouts && data.workouts.length > 0) {
+            list.innerHTML = data.workouts.map(w => `
+                <div class="task-item">
+                    <div class="task-circle" style="border-color: var(--accent);"><i data-lucide="dumbbell" style="width: 14px; height: 14px; color: var(--accent);"></i></div>
+                    <div class="task-content">
+                        <div class="task-text">${w.exercise_name}</div>
+                        <div class="task-meta">${w.weight ? w.weight + ' кг, ' : ''}${w.sets} x ${w.reps}</div>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            list.innerHTML = `<div class="loading">Нет тренировок на этот день.</div>`;
+        }
+        if (window.lucide) lucide.createIcons();
+    } catch (e) {
+        document.getElementById('fitness-list').innerHTML = `<div class="loading">Ошибка</div>`;
+    }
+}
+
+async function fetchNutrition() {
+    try {
+        const tzOffset = selectedDate.getTimezoneOffset() * 60000;
+        const localISOTime = (new Date(selectedDate.getTime() - tzOffset)).toISOString().split('T')[0];
+        const res = await fetch(`/api/nutrition?date=${localISOTime}`, { headers });
+        const data = await res.json();
+        
+        const list = document.getElementById('nutrition-list');
+        let totalKcal = 0, totalP = 0, totalF = 0, totalC = 0;
+        
+        if (data.nutrition && data.nutrition.length > 0) {
+            list.innerHTML = data.nutrition.map(n => {
+                totalKcal += n.calories || 0;
+                totalP += n.protein || 0;
+                totalF += n.fat || 0;
+                totalC += n.carbs || 0;
+                return `
+                <div class="task-item">
+                    <div class="task-circle" style="border-color: #34C759;"><i data-lucide="utensils" style="width: 14px; height: 14px; color: #34C759;"></i></div>
+                    <div class="task-content">
+                        <div class="task-text">${n.meal_name}</div>
+                        <div class="task-meta">${n.calories} ккал | Б:${n.protein} Ж:${n.fat} У:${n.carbs}</div>
+                    </div>
+                </div>
+            `}).join('');
+        } else {
+            list.innerHTML = `<div class="loading">Нет записей о питании.</div>`;
+        }
+        
+        document.getElementById('macro-kcal').innerText = totalKcal;
+        document.getElementById('macro-protein').innerText = totalP + 'g';
+        document.getElementById('macro-fat').innerText = totalF + 'g';
+        document.getElementById('macro-carbs').innerText = totalC + 'g';
+        
+        if (window.lucide) lucide.createIcons();
+    } catch (e) {
+        document.getElementById('nutrition-list').innerHTML = `<div class="loading">Ошибка</div>`;
+    }
+}
+
+let activeManualType = null;
+function openManualInput(type) {
+    activeManualType = type;
+    document.getElementById('manual-modal').classList.remove('hidden');
+    document.getElementById('form-fitness').classList.add('hidden');
+    document.getElementById('form-nutrition').classList.add('hidden');
+    
+    if (type === 'fitness') {
+        document.getElementById('manual-title').innerText = "Добавить упражнение";
+        document.getElementById('form-fitness').classList.remove('hidden');
+    } else {
+        document.getElementById('manual-title').innerText = "Добавить прием пищи";
+        document.getElementById('form-nutrition').classList.remove('hidden');
+    }
+}
+
+function closeManualInput() {
+    document.getElementById('manual-modal').classList.add('hidden');
+    activeManualType = null;
+}
+
+async function saveManualFitness() {
+    const name = document.getElementById('fitness-name').value;
+    const weight = document.getElementById('fitness-weight').value;
+    const sets = parseInt(document.getElementById('fitness-sets').value) || 1;
+    const reps = parseInt(document.getElementById('fitness-reps').value) || 1;
+    if (!name) return;
+    
+    try {
+        await fetch('/api/fitness', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ exercise_name: name, weight, sets, reps })
+        });
+        closeManualInput();
+        fetchFitness();
+        document.getElementById('fitness-name').value = '';
+        document.getElementById('fitness-weight').value = '';
+    } catch (e) {
+        alert('Ошибка при сохранении');
+    }
+}
+
+async function saveManualNutrition() {
+    const name = document.getElementById('nutrition-name').value;
+    const kcal = parseInt(document.getElementById('nutrition-kcal').value) || 0;
+    const p = parseInt(document.getElementById('nutrition-p').value) || 0;
+    const f = parseInt(document.getElementById('nutrition-f').value) || 0;
+    const c = parseInt(document.getElementById('nutrition-c').value) || 0;
+    if (!name) return;
+    
+    try {
+        await fetch('/api/nutrition', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ meal_name: name, calories: kcal, protein: p, fat: f, carbs: c })
+        });
+        closeManualInput();
+        fetchNutrition();
+        document.getElementById('nutrition-name').value = '';
+        document.getElementById('nutrition-kcal').value = '';
+        document.getElementById('nutrition-p').value = '';
+        document.getElementById('nutrition-f').value = '';
+        document.getElementById('nutrition-c').value = '';
+    } catch (e) {
+        alert('Ошибка при сохранении');
     }
 }
 
