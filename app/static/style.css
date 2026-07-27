@@ -412,6 +412,10 @@ body {
     display: none;
 }
 
+.hidden {
+    display: none !important;
+}
+
 .chat-header {
     display: flex;
     justify-content: space-between;
