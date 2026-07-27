@@ -72,7 +72,12 @@ function renderDatePicker(containerId) {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - 14);
     
-    let html = '';
+    let html = `
+        <div style="position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 52px; height: 64px; border-radius: 14px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); cursor: pointer; flex-shrink: 0;">
+            <i data-lucide="calendar" style="width: 20px; height: 20px; color: var(--text-muted);"></i>
+            <input type="date" onchange="if(this.value) { selectDate(this.value); }" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer;">
+        </div>
+    `;
     let selectedId = '';
     
     for (let i = 0; i <= 28; i++) {
@@ -98,8 +103,10 @@ function renderDatePicker(containerId) {
     container.innerHTML = html;
     
     if (selectedId) {
-        const el = document.getElementById(selectedId);
-        if (el) el.scrollIntoView({ behavior: 'smooth', inline: 'center' });
+        setTimeout(() => {
+            const el = document.getElementById(selectedId);
+            if (el) el.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+        }, 50);
     }
 }
 
@@ -472,6 +479,7 @@ function openManualInput(type) {
     document.getElementById('form-nutrition').classList.add('hidden');
     document.getElementById('form-relationships').classList.add('hidden');
     document.getElementById('form-hobbies').classList.add('hidden');
+    document.getElementById('form-health').classList.add('hidden');
     
     if (type === 'fitness') {
         document.getElementById('manual-title').innerText = "Добавить упражнение";
@@ -485,6 +493,9 @@ function openManualInput(type) {
     } else if (type === 'hobbies') {
         document.getElementById('manual-title').innerText = "Добавить хобби";
         document.getElementById('form-hobbies').classList.remove('hidden');
+    } else if (type === 'health') {
+        document.getElementById('manual-title').innerText = "Добавить данные о здоровье";
+        document.getElementById('form-health').classList.remove('hidden');
     }
     
     setTimeout(() => {
