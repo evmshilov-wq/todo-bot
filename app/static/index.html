@@ -204,8 +204,52 @@
                 </div>
             </div>
         </main>
-        <main id="view-relationships" class="view-hidden"><div class="view-header"><button class="icon-btn-back" onclick="openView('view-dashboard')"><i data-lucide="chevron-left"></i> Назад</button><h2>Отношения</h2></div><div class="content-section"><p>В разработке (Шаг 3)</p></div></main>
-        <main id="view-hobbies" class="view-hidden"><div class="view-header"><button class="icon-btn-back" onclick="openView('view-dashboard')"><i data-lucide="chevron-left"></i> Назад</button><h2>Хобби</h2></div><div class="content-section"><p>В разработке</p></div></main>
+        <main id="view-relationships" class="view-hidden">
+            <div class="view-header">
+                <button class="icon-btn-back" onclick="openView('view-dashboard')">
+                    <i data-lucide="chevron-left"></i> Назад
+                </button>
+                <h2>Отношения</h2>
+                <button class="icon-btn" onclick="openManualInput('relationships')"><i data-lucide="plus"></i></button>
+            </div>
+            <div class="content-section" style="padding-top: 80px;">
+                <div class="section-header" style="margin-top: 16px;">
+                    <h3 id="relationships-title">Лог встреч</h3>
+                </div>
+                <div id="relationships-list" class="items-list">
+                    <div class="loading">Загрузка встреч...</div>
+                </div>
+            </div>
+        </main>
+        
+        <main id="view-hobbies" class="view-hidden">
+            <div class="view-header">
+                <button class="icon-btn-back" onclick="openView('view-dashboard')">
+                    <i data-lucide="chevron-left"></i> Назад
+                </button>
+                <h2>Хобби</h2>
+                <button class="icon-btn" onclick="openManualInput('hobbies')"><i data-lucide="plus"></i></button>
+            </div>
+            <div class="content-section" style="padding-top: 80px;">
+                <div class="horizontal-date-picker" id="hobbies-date-picker">
+                    <!-- JS will fill this -->
+                </div>
+                
+                <div class="macros-container" style="margin-top: 16px;">
+                    <div class="macro-item">
+                        <span class="macro-label">Суммарное время</span>
+                        <strong class="macro-value" id="hobby-total-time">0 м</strong>
+                    </div>
+                </div>
+
+                <div class="section-header" style="margin-top: 16px;">
+                    <h3 id="hobbies-title">Хобби на сегодня</h3>
+                </div>
+                <div id="hobbies-list" class="items-list">
+                    <div class="loading">Загрузка хобби...</div>
+                </div>
+            </div>
+        </main>
         <main id="view-health" class="view-hidden"><div class="view-header"><button class="icon-btn-back" onclick="openView('view-dashboard')"><i data-lucide="chevron-left"></i> Назад</button><h2>Здоровье</h2></div><div class="content-section"><p>Утренние чекапы работают через чат Telegram.</p></div></main>
         <main id="view-finance" class="view-hidden"><div class="view-header"><button class="icon-btn-back" onclick="openView('view-dashboard')"><i data-lucide="chevron-left"></i> Назад</button><h2>Финансы</h2></div><div class="content-section"><p>В разработке</p></div></main>
 
@@ -269,12 +313,12 @@
                 <!-- Nutrition Form -->
                 <div id="form-nutrition" class="hidden">
                     <div class="form-group">
-                        <label>Блюдо</label>
-                        <input type="text" id="nutrition-name" placeholder="Например: Борщ с мясом">
+                        <label>Прием пищи</label>
+                        <input type="text" id="nutrition-name" placeholder="Например: Борщ">
                     </div>
                     <div class="form-group">
                         <label>Калории (ккал)</label>
-                        <input type="number" id="nutrition-kcal" placeholder="0">
+                        <input type="number" id="nutrition-kcal" placeholder="300">
                     </div>
                     <div style="display: flex; gap: 12px; margin-top: 12px;">
                         <div class="form-group" style="flex: 1;">
@@ -292,13 +336,43 @@
                     </div>
                     <button class="primary-btn" onclick="saveManualNutrition()" style="width: 100%; margin-top: 16px;">Сохранить</button>
                 </div>
+                
+                <!-- Relationships Form -->
+                <div id="form-relationships" class="hidden">
+                    <div class="form-group">
+                        <label>Имя человека</label>
+                        <input type="text" id="relationships-name" placeholder="Например: Макс">
+                    </div>
+                    <div class="form-group">
+                        <label>О чем общались?</label>
+                        <input type="text" id="relationships-notes" placeholder="Например: Пили кофе, обсуждали проект">
+                    </div>
+                    <button class="primary-btn" onclick="saveManualRelationship()" style="width: 100%; margin-top: 16px;">Сохранить</button>
+                </div>
+
+                <!-- Hobbies Form -->
+                <div id="form-hobbies" class="hidden">
+                    <div class="form-group">
+                        <label>Название хобби</label>
+                        <input type="text" id="hobbies-name" placeholder="Например: Испанский">
+                    </div>
+                    <div class="form-group">
+                        <label>Время (минут)</label>
+                        <input type="number" id="hobbies-duration" placeholder="30">
+                    </div>
+                    <div class="form-group">
+                        <label>Заметки / Прогресс</label>
+                        <input type="text" id="hobbies-notes" placeholder="Например: Выучил 10 слов">
+                    </div>
+                    <button class="primary-btn" onclick="saveManualHobby()" style="width: 100%; margin-top: 16px;">Сохранить</button>
+                </div>
             </div>
         </div>
 
     </div>
 
     <!-- Javascript -->
-    <script src="/static/app.js?v=12"></script>
+    <script src="/static/app.js?v=13"></script>
     <script>
         lucide.createIcons();
     </script>

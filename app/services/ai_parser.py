@@ -59,6 +59,19 @@ class NutritionActionModel(BaseModel):
     fat: Optional[int] = Field(0, description="Жиры (г)")
     date_time: Optional[str] = Field(None, description="Дата в формате YYYY-MM-DD HH:MM")
 
+class InteractionActionModel(BaseModel):
+    action: Literal["add", "delete"] = Field(description="add или delete")
+    person_name: str = Field(description="Имя человека, с которым была встреча (например, 'Макс', 'Оля')")
+    notes: Optional[str] = Field(None, description="О чем говорили, где были, идеи")
+    date_time: Optional[str] = Field(None, description="Дата в формате YYYY-MM-DD HH:MM")
+
+class HobbyActionModel(BaseModel):
+    action: Literal["add", "delete"] = Field(description="add или delete")
+    hobby_name: str = Field(description="Название хобби (например, 'Чтение', 'Гитара', 'Испанский')")
+    duration_minutes: Optional[int] = Field(0, description="Сколько минут потрачено (например, 30, 60)")
+    notes: Optional[str] = Field(None, description="Что конкретно делал (например, 'Прочитал 20 страниц')")
+    date_time: Optional[str] = Field(None, description="Дата в формате YYYY-MM-DD HH:MM")
+
 class AIChatResponseModel(BaseModel):
     reply: str = Field(description="Эмпатичный и естественный ответ пользователю. Без роботизированных фраз.")
     tasks: List[TaskActionModel] = Field(default_factory=list, description="Действия с задачами, если требуются")
@@ -66,6 +79,8 @@ class AIChatResponseModel(BaseModel):
     notes: List[NoteActionModel] = Field(default_factory=list, description="Длинные заметки/рассуждения/статьи")
     workouts: List[WorkoutActionModel] = Field(default_factory=list, description="Тренировки (упражнения, подходы, вес)")
     nutrition: List[NutritionActionModel] = Field(default_factory=list, description="Приемы пищи (еда, БЖУ, калории)")
+    interactions: List[InteractionActionModel] = Field(default_factory=list, description="Встречи и логи общения с людьми")
+    hobbies: List[HobbyActionModel] = Field(default_factory=list, description="Занятия хобби (время, описание)")
     onboarding: Optional[OnboardingActionModel] = Field(None, description="Управление статусом интервью/онбординга")
 
 
@@ -181,11 +196,13 @@ def get_ai_system_prompt(available_categories: list, user_tz: str, current_tasks
 - Если в речи пользователя есть новые дела, добавь их в массив `tasks` (action="add").
 - ОЧЕНЬ ВАЖНО ПРО ДАТУ И ВРЕМЯ: Если пользователь называет день (завтра, в среду) или время (примерно в 17ч), ты ОБЯЗАН ВЫСЧИТАТЬ правильную дату и время в формате YYYY-MM-DD HH:MM на основе ТЕКУЩЕЙ ДАТЫ. 
 - Если указан час, обязательно запиши его в date_time, а параметр `is_timeless` сделай false. Если точного времени нет, то `is_timeless` = true.
-- Если пользователь рассказывает о своих мыслях, идеях, планах, дневниковых записях — ОБЯЗАТЕЛЬНО создай Заметку (`notes`, action="add", title, content, tags, sphere). Пиши content красиво, используй Markdown. ВАЖНО: Если в `reply` ты говоришь "Я записал идею/заметку", ты ОБЯЗАН добавить объект в массив `notes`!
-- Вытаскивай важные факты о пользователе (имя, кто его друзья, место работы, интересы, долгосрочные цели) и сохраняй их в `memories` (action="add", sphere).
-- ТРЕНИРОВКИ: Если пользователь диктует упражнение (например, "Жим лежа 80 кг 3 по 10"), добавь объект в массив `workouts` (exercise_name="Жим лежа", weight="80", sets=3, reps=10, date_time).
-- ПИТАНИЕ: Если пользователь пишет, что он съел (например, "Борщ"), или прислал ФОТО еды, оцени Калории и БЖУ "на глаз" (через свои знания или анализ фото) и запиши в массив `nutrition` (meal_name, calories, protein, carbs, fat, date_time). Пиши точные, но приблизительные числа, не оставляй нули, если еда известна.
-- Приоритеты задач: A (критично), B (важно), C (рутина), D (бэклог/несрочно).
+- Заметки: Если пользователь делится идеями, планами или статьями, обязательно создай объект в `notes`. Пиши красиво в Markdown.
+- Факты: Вытаскивай важные факты о пользователе (имя, друзья, интересы) и сохраняй в `memories`.
+- Тренировки: Если пользователь диктует спорт, добавь объект в `workouts` (упражнение, вес, подходы).
+- Питание: Если говорит, что съел, или скинул фото еды, оцени БЖУ и Ккал 'на глаз' и добавь в `nutrition`.
+- Отношения: Если пользователь говорит о встречах с кем-то (например "Пил кофе с Колей"), добавь объект в `interactions` (person_name="Коля", notes="Пили кофе").
+- Хобби: Если пользователь говорит о своих занятиях (например "Учил английский 30 минут"), добавь объект в `hobbies` (hobby_name="Английский", duration_minutes=30).
+- Приоритеты задач: A (критично), B (важно), C (рутина), D (бэклог).
 """
 
 def format_history_for_gemini(chat_history: list) -> list:

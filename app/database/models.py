@@ -107,3 +107,20 @@ class Note(Base):
     created_at: Mapped[str] = mapped_column(String)
     embedding: Mapped[str] = mapped_column(String, nullable=True) # JSON string of floats
     sphere: Mapped[str] = mapped_column(String, default="work")
+
+class InteractionLog(Base):
+    __tablename__ = 'interaction_logs'
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(BigInteger)
+    person_name: Mapped[str] = mapped_column(String)
+    date_time: Mapped[str] = mapped_column(String)
+    notes: Mapped[str] = mapped_column(String, nullable=True)
+
+class HobbyLog(Base):
+    __tablename__ = 'hobby_logs'
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(BigInteger)
+    hobby_name: Mapped[str] = mapped_column(String)
+    duration_minutes: Mapped[int] = mapped_column(Integer, default=0)
+    date_time: Mapped[str] = mapped_column(String)
+    notes: Mapped[str] = mapped_column(String, nullable=True)

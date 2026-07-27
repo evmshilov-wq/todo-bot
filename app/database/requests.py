@@ -2,7 +2,7 @@ from datetime import datetime, date, timedelta
 from sqlalchemy import select, update, delete
 from zoneinfo import ZoneInfo
 from app.database.engine import async_session
-from app.database.models import User, Category, Task, Habit, HabitLog, ChatMessage, Memory, Note, WorkoutLog, NutritionLog
+from app.database.models import User, Category, Task, Habit, HabitLog, ChatMessage, Memory, Note, WorkoutLog, NutritionLog, InteractionLog, HobbyLog
 from app.config import DEFAULT_TZ
 
 async def get_all_users():
@@ -368,3 +368,42 @@ async def delete_nutrition_db(user_id: int, log_id: int):
         await session.execute(delete(NutritionLog).where(NutritionLog.id == log_id, NutritionLog.user_id == user_id))
         await session.commit()
 
+# --- Interaction Logs (Relationships) ---
+async def add_interaction(user_id: int, date_time: str, person_name: str, notes: str = None):
+    async with async_session() as session:
+        session.add(InteractionLog(user_id=user_id, date_time=date_time, person_name=person_name, notes=notes))
+        await session.commit()
+
+async def get_interactions(user_id: int, limit: int = 50):
+    async with async_session() as session:
+        query = select(InteractionLog).where(
+            InteractionLog.user_id == user_id
+        ).order_by(InteractionLog.date_time.desc()).limit(limit)
+        result = await session.scalars(query)
+        return [{"id": i.id, "date_time": i.date_time, "person_name": i.person_name, "notes": i.notes} for i in result.all()]
+
+async def delete_interaction(user_id: int, log_id: int):
+    async with async_session() as session:
+        await session.execute(delete(InteractionLog).where(InteractionLog.id == log_id, InteractionLog.user_id == user_id))
+        await session.commit()
+
+# --- Hobby Logs ---
+async def add_hobby_log(user_id: int, date_time: str, hobby_name: str, duration_minutes: int = 0, notes: str = None):
+    async with async_session() as session:
+        session.add(HobbyLog(user_id=user_id, date_time=date_time, hobby_name=hobby_name, duration_minutes=duration_minutes, notes=notes))
+        await session.commit()
+
+async def get_hobby_logs_for_date(user_id: int, target_date: date):
+    async with async_session() as session:
+        date_str = target_date.strftime("%Y-%m-%d")
+        query = select(HobbyLog).where(
+            HobbyLog.user_id == user_id,
+            HobbyLog.date_time.startswith(date_str)
+        ).order_by(HobbyLog.id.desc())
+        result = await session.scalars(query)
+        return [{"id": h.id, "date_time": h.date_time, "hobby_name": h.hobby_name, "duration_minutes": h.duration_minutes, "notes": h.notes} for h in result.all()]
+
+async def delete_hobby_log(user_id: int, log_id: int):
+    async with async_session() as session:
+        await session.execute(delete(HobbyLog).where(HobbyLog.id == log_id, HobbyLog.user_id == user_id))
+        await session.commit()

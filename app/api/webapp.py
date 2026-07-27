@@ -262,6 +262,49 @@ async def api_add_nutrition(request: web.Request):
     return web.json_response({"status": "ok"})
 
 
+@routes.get("/api/relationships")
+async def api_get_relationships(request: web.Request):
+    user_id = get_user_id(request)
+    if not user_id: return web.json_response({"error": "Unauthorized"}, status=401)
+    from app.database.requests import get_interactions
+    interactions = await get_interactions(user_id)
+    return web.json_response({"relationships": interactions})
+
+@routes.post("/api/relationships")
+async def api_add_relationship(request: web.Request):
+    user_id = get_user_id(request)
+    if not user_id: return web.json_response({"error": "Unauthorized"}, status=401)
+    data = await request.json()
+    from app.database.requests import add_interaction, get_user_timezone
+    user_tz = await get_user_timezone(user_id)
+    dt = data.get("date_time") or datetime.now(ZoneInfo(user_tz)).strftime("%Y-%m-%d %H:%M")
+    await add_interaction(user_id, dt, data.get("person_name"), data.get("notes"))
+    return web.json_response({"status": "ok"})
+
+@routes.get("/api/hobbies")
+async def api_get_hobbies(request: web.Request):
+    user_id = get_user_id(request)
+    if not user_id: return web.json_response({"error": "Unauthorized"}, status=401)
+    date_str = request.query.get("date")
+    from app.database.requests import get_hobby_logs_for_date, get_all_hobby_logs
+    if date_str:
+        target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+        hobbies = await get_hobby_logs_for_date(user_id, target_date)
+    else:
+        hobbies = await get_all_hobby_logs(user_id)
+    return web.json_response({"hobbies": hobbies})
+
+@routes.post("/api/hobbies")
+async def api_add_hobby(request: web.Request):
+    user_id = get_user_id(request)
+    if not user_id: return web.json_response({"error": "Unauthorized"}, status=401)
+    data = await request.json()
+    from app.database.requests import add_hobby_log, get_user_timezone
+    user_tz = await get_user_timezone(user_id)
+    dt = data.get("date_time") or datetime.now(ZoneInfo(user_tz)).strftime("%Y-%m-%d %H:%M")
+    await add_hobby_log(user_id, dt, data.get("hobby_name"), data.get("duration_minutes", 0), data.get("notes"))
+    return web.json_response({"status": "ok"})
+
 @routes.post("/api/ai_text")
 async def api_ai_text(request: web.Request):
     user_id = get_user_id(request)
@@ -369,6 +412,18 @@ async def api_ai_text(request: web.Request):
         if n.get("action") == "add" and n.get("meal_name"):
             dt = n.get("date_time") or datetime.now(ZoneInfo(user_tz)).strftime("%Y-%m-%d %H:%M")
             await add_nutrition(user_id, dt, n["meal_name"], n.get("calories", 0), n.get("protein", 0), n.get("carbs", 0), n.get("fat", 0))
+
+    # 8. Process Interactions & Hobbies
+    from app.database.requests import add_interaction, add_hobby_log
+    for i in mutations.get("interactions", []):
+        if i.get("action") == "add" and i.get("person_name"):
+            dt = i.get("date_time") or datetime.now(ZoneInfo(user_tz)).strftime("%Y-%m-%d %H:%M")
+            await add_interaction(user_id, dt, i["person_name"], i.get("notes"))
+            
+    for h in mutations.get("hobbies", []):
+        if h.get("action") == "add" and h.get("hobby_name"):
+            dt = h.get("date_time") or datetime.now(ZoneInfo(user_tz)).strftime("%Y-%m-%d %H:%M")
+            await add_hobby_log(user_id, dt, h["hobby_name"], h.get("duration_minutes", 0), h.get("notes"))
 
     return web.json_response({"status": "ok", "reply": reply_text, "mutations": mutations})
 
@@ -582,6 +637,18 @@ async def api_ai_voice(request: web.Request):
         if n.get("action") == "add" and n.get("meal_name"):
             dt = n.get("date_time") or datetime.now(ZoneInfo(user_tz)).strftime("%Y-%m-%d %H:%M")
             await add_nutrition(user_id, dt, n["meal_name"], n.get("calories", 0), n.get("protein", 0), n.get("carbs", 0), n.get("fat", 0))
+
+    # 8. Process Interactions & Hobbies
+    from app.database.requests import add_interaction, add_hobby_log
+    for i in mutations.get("interactions", []):
+        if i.get("action") == "add" and i.get("person_name"):
+            dt = i.get("date_time") or datetime.now(ZoneInfo(user_tz)).strftime("%Y-%m-%d %H:%M")
+            await add_interaction(user_id, dt, i["person_name"], i.get("notes"))
+            
+    for h in mutations.get("hobbies", []):
+        if h.get("action") == "add" and h.get("hobby_name"):
+            dt = h.get("date_time") or datetime.now(ZoneInfo(user_tz)).strftime("%Y-%m-%d %H:%M")
+            await add_hobby_log(user_id, dt, h["hobby_name"], h.get("duration_minutes", 0), h.get("notes"))
 
     return web.json_response({"status": "ok", "reply": reply_text, "mutations": mutations})
 

@@ -47,6 +47,11 @@ function openView(viewId) {
     } else if (viewId === 'view-nutrition') {
         renderDatePicker('nutrition-date-picker');
         fetchNutrition();
+    } else if (viewId === 'view-relationships') {
+        fetchRelationships();
+    } else if (viewId === 'view-hobbies') {
+        renderDatePicker('hobbies-date-picker');
+        fetchHobbies();
     }
 }
 
@@ -102,10 +107,12 @@ function selectDate(dateStr) {
         els.tasksTitle.innerText = "Задачи на сегодня";
         document.getElementById('fitness-title').innerText = "Упражнения за сегодня";
         document.getElementById('nutrition-title').innerText = "Приемы пищи за сегодня";
+        document.getElementById('hobbies-title').innerText = "Хобби за сегодня";
     } else {
         els.tasksTitle.innerText = `Задачи на ${dateFormatted}`;
         document.getElementById('fitness-title').innerText = `Упражнения на ${dateFormatted}`;
         document.getElementById('nutrition-title').innerText = `Приемы пищи на ${dateFormatted}`;
+        document.getElementById('hobbies-title').innerText = `Хобби на ${dateFormatted}`;
     }
     
     const activeView = document.querySelector('main.view-active').id;
@@ -118,6 +125,9 @@ function selectDate(dateStr) {
     } else if (activeView === 'view-nutrition') {
         renderDatePicker('nutrition-date-picker');
         fetchNutrition();
+    } else if (activeView === 'view-hobbies') {
+        renderDatePicker('hobbies-date-picker');
+        fetchHobbies();
     }
 }
 
@@ -195,6 +205,8 @@ async function sendText() {
         fetchNotes();
         fetchFitness();
         fetchNutrition();
+        fetchRelationships();
+        fetchHobbies();
         fetchProfileStats();
     } catch (e) {
         status.innerText = "Ошибка отправки";
@@ -245,6 +257,8 @@ async function toggleVoice() {
                     fetchNotes();
                     fetchFitness();
                     fetchNutrition();
+                    fetchRelationships();
+                    fetchHobbies();
                     fetchProfileStats();
                 } catch (e) {
                     status.innerText = "Ошибка распознавания";
@@ -423,13 +437,21 @@ function openManualInput(type) {
     modal.classList.remove('hidden');
     document.getElementById('form-fitness').classList.add('hidden');
     document.getElementById('form-nutrition').classList.add('hidden');
+    document.getElementById('form-relationships').classList.add('hidden');
+    document.getElementById('form-hobbies').classList.add('hidden');
     
     if (type === 'fitness') {
         document.getElementById('manual-title').innerText = "Добавить упражнение";
         document.getElementById('form-fitness').classList.remove('hidden');
-    } else {
+    } else if (type === 'nutrition') {
         document.getElementById('manual-title').innerText = "Добавить прием пищи";
         document.getElementById('form-nutrition').classList.remove('hidden');
+    } else if (type === 'relationships') {
+        document.getElementById('manual-title').innerText = "Добавить встречу";
+        document.getElementById('form-relationships').classList.remove('hidden');
+    } else if (type === 'hobbies') {
+        document.getElementById('manual-title').innerText = "Добавить хобби";
+        document.getElementById('form-hobbies').classList.remove('hidden');
     }
     
     setTimeout(() => {
@@ -499,6 +521,114 @@ async function saveManualNutrition() {
         document.getElementById('nutrition-c').value = '';
     } catch (e) {
         alert('Ошибка при сохранении');
+    }
+}
+
+// --- Relationships & Hobbies Logic ---
+async function fetchRelationships() {
+    try {
+        const res = await fetch(`/api/relationships`, { headers });
+        const data = await res.json();
+        const list = document.getElementById('relationships-list');
+        
+        if (data.relationships && data.relationships.length > 0) {
+            list.innerHTML = data.relationships.map(r => `
+                <div class="task-item">
+                    <div class="task-circle" style="border-color: #FF2D55;"><i data-lucide="users" style="width: 14px; height: 14px; color: #FF2D55;"></i></div>
+                    <div class="task-content">
+                        <div class="task-text">${r.person_name}</div>
+                        <div class="task-meta">${r.date_time.split(' ')[0]} | ${r.notes || ''}</div>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            list.innerHTML = `<div class="loading">Нет записей о встречах.</div>`;
+        }
+        if (window.lucide) lucide.createIcons();
+    } catch (e) {
+        document.getElementById('relationships-list').innerHTML = `<div class="loading">Ошибка</div>`;
+    }
+}
+
+async function fetchHobbies() {
+    try {
+        const tzOffset = selectedDate.getTimezoneOffset() * 60000;
+        const localISOTime = (new Date(selectedDate.getTime() - tzOffset)).toISOString().split('T')[0];
+        const res = await fetch(`/api/hobbies?date=${localISOTime}`, { headers });
+        const data = await res.json();
+        const list = document.getElementById('hobbies-list');
+        
+        let totalTime = 0;
+        if (data.hobbies && data.hobbies.length > 0) {
+            list.innerHTML = data.hobbies.map(h => {
+                totalTime += h.duration_minutes || 0;
+                return `
+                <div class="task-item">
+                    <div class="task-circle" style="border-color: #AF52DE;"><i data-lucide="palette" style="width: 14px; height: 14px; color: #AF52DE;"></i></div>
+                    <div class="task-content">
+                        <div class="task-text">${h.hobby_name}</div>
+                        <div class="task-meta">${h.duration_minutes} мин | ${h.notes || ''}</div>
+                    </div>
+                </div>
+            `}).join('');
+        } else {
+            list.innerHTML = `<div class="loading">Нет записей о хобби за этот день.</div>`;
+        }
+        
+        document.getElementById('hobby-total-time').innerText = totalTime + ' м';
+        if (window.lucide) lucide.createIcons();
+    } catch (e) {
+        document.getElementById('hobbies-list').innerHTML = `<div class="loading">Ошибка</div>`;
+    }
+}
+
+async function saveManualRelationship() {
+    const name = document.getElementById('relationships-name').value;
+    const notes = document.getElementById('relationships-notes').value;
+    if (!name) return alert("Введите имя человека!");
+    
+    const tzOffset = selectedDate.getTimezoneOffset() * 60000;
+    const localISOTime = (new Date(selectedDate.getTime() - tzOffset)).toISOString().split('T')[0];
+    const dt = `${localISOTime} 12:00`;
+
+    try {
+        await fetch('/api/relationships', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ person_name: name, notes: notes, date_time: dt })
+        });
+        document.getElementById('relationships-name').value = '';
+        document.getElementById('relationships-notes').value = '';
+        closeManualInput();
+        fetchRelationships();
+    } catch (e) {
+        alert("Ошибка при сохранении");
+    }
+}
+
+async function saveManualHobby() {
+    const name = document.getElementById('hobbies-name').value;
+    const duration = parseInt(document.getElementById('hobbies-duration').value) || 0;
+    const notes = document.getElementById('hobbies-notes').value;
+    if (!name) return alert("Введите название хобби!");
+    
+    const tzOffset = selectedDate.getTimezoneOffset() * 60000;
+    const localISOTime = (new Date(selectedDate.getTime() - tzOffset)).toISOString().split('T')[0];
+    const dt = `${localISOTime} 12:00`;
+
+    try {
+        await fetch('/api/hobbies', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ hobby_name: name, duration_minutes: duration, notes: notes, date_time: dt })
+        });
+        document.getElementById('hobbies-name').value = '';
+        document.getElementById('hobbies-duration').value = '';
+        document.getElementById('hobbies-notes').value = '';
+        closeManualInput();
+        fetchHobbies();
+    } catch (e) {
+        alert("Ошибка при сохранении");
     }
 }
 
