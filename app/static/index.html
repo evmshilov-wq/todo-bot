@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Life OS</title>
-    <link rel="stylesheet" href="/static/style.css?v=11">
+    <link rel="stylesheet" href="/static/style.css?v=12">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -358,7 +358,7 @@
         </div>
 
         <!-- Manual Input Modal (Shared) -->
-        <div id="manual-modal" class="chat-overlay hidden" style="justify-content: flex-end;">
+        <div id="manual-modal" class="chat-overlay hidden" style="justify-content: flex-end;" onclick="if(event.target === this) closeManualInput()">
             <div class="chat-header">
                 <h2 id="manual-title">Добавить</h2>
                 <button class="icon-btn" onclick="closeManualInput()">
@@ -496,7 +496,7 @@
     </div>
 
     <!-- Javascript -->
-    <script src="/static/app.js?v=18"></script>
+    <script src="/static/app.js?v=19"></script>
     <script>
         lucide.createIcons();
     </script>

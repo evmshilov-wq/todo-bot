@@ -89,7 +89,7 @@ function renderDatePicker(containerId) {
         const dayName = daysRu[d.getDay()];
         const dayNum = d.getDate();
         
-        const id = `date-item-${dateStr}`;
+        const id = `${containerId}-date-item-${dateStr}`;
         if (isSelected) selectedId = id;
         
         html += `
@@ -111,7 +111,8 @@ function renderDatePicker(containerId) {
 }
 
 function selectDate(dateStr) {
-    selectedDate = new Date(dateStr);
+    const parts = dateStr.split('-');
+    selectedDate = new Date(parts[0], parts[1] - 1, parts[2]);
     
     const today = new Date();
     const isToday = selectedDate.toDateString() === today.toDateString();
@@ -480,6 +481,7 @@ function openManualInput(type) {
     document.getElementById('form-relationships').classList.add('hidden');
     document.getElementById('form-hobbies').classList.add('hidden');
     document.getElementById('form-health').classList.add('hidden');
+    document.getElementById('form-finance').classList.add('hidden');
     
     if (type === 'fitness') {
         document.getElementById('manual-title').innerText = "Добавить упражнение";
@@ -496,6 +498,9 @@ function openManualInput(type) {
     } else if (type === 'health') {
         document.getElementById('manual-title').innerText = "Добавить данные о здоровье";
         document.getElementById('form-health').classList.remove('hidden');
+    } else if (type === 'finance') {
+        document.getElementById('manual-title').innerText = "Добавить транзакцию";
+        document.getElementById('form-finance').classList.remove('hidden');
     }
     
     setTimeout(() => {
