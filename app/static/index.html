@@ -8,6 +8,7 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <div id="app-container">
@@ -166,6 +167,14 @@
             <div class="content-section">
                 <!-- Date Picker Strip for Fitness -->
                 <div id="fitness-date-picker" class="date-picker"></div>
+                
+                <div class="section-header" style="margin-top: 16px;">
+                    <h3>График активности</h3>
+                </div>
+                <div class="chart-container" style="position: relative; height:200px; width:100%; background: var(--card-bg); border-radius: 16px; padding: 12px; border: 1px solid var(--border-color);">
+                    <canvas id="fitnessChart"></canvas>
+                </div>
+
                 <div class="section-header" style="margin-top: 16px;">
                     <h3 id="fitness-title">Упражнения за день</h3>
                 </div>
@@ -195,6 +204,13 @@
                         <span class="macro-label">Вода</span>
                         <strong class="macro-value" id="health-total-water">0 мл</strong>
                     </div>
+                </div>
+                
+                <div class="section-header" style="margin-top: 16px;">
+                    <h3>График сна</h3>
+                </div>
+                <div class="chart-container" style="position: relative; height:200px; width:100%; background: var(--card-bg); border-radius: 16px; padding: 12px; border: 1px solid var(--border-color);">
+                    <canvas id="sleepChart"></canvas>
                 </div>
 
                 <div class="section-header" style="margin-top: 16px;">

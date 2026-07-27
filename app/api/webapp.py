@@ -327,6 +327,14 @@ async def api_get_fitness(request: web.Request):
     workouts = await get_workouts_for_date(user_id, target_date)
     return web.json_response({"workouts": workouts})
 
+@routes.get("/api/fitness/chart")
+async def api_get_fitness_chart(request: web.Request):
+    user_id = get_user_id(request)
+    if not user_id: return web.json_response({"error": "Unauthorized"}, status=401)
+    from app.database.requests import get_fitness_chart_data
+    data = await get_fitness_chart_data(user_id, 14)
+    return web.json_response({"chart": data})
+
 @routes.post("/api/fitness")
 async def api_add_fitness(request: web.Request):
     user_id = get_user_id(request)
@@ -429,6 +437,14 @@ async def api_get_health(request: web.Request):
     else:
         logs = []
     return web.json_response({"health": logs})
+
+@routes.get("/api/health/chart")
+async def api_get_health_chart(request: web.Request):
+    user_id = get_user_id(request)
+    if not user_id: return web.json_response({"error": "Unauthorized"}, status=401)
+    from app.database.requests import get_health_chart_data
+    data = await get_health_chart_data(user_id, 14)
+    return web.json_response({"chart": data})
 
 @routes.post("/api/health")
 async def api_add_health(request: web.Request):

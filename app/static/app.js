@@ -27,6 +27,97 @@ const els = {
 };
 
 let selectedDate = new Date();
+let chartFitness = null;
+let chartSleep = null;
+
+function renderFitnessChart(data) {
+    const ctx = document.getElementById('fitnessChart');
+    if (!ctx) return;
+    
+    // Sort chronologically
+    data.sort((a, b) => new Date(a.date) - new Date(b.date));
+    
+    const labels = data.map(d => d.date.split('-').slice(1).join('/')); // MM/DD
+    const values = data.map(d => d.count);
+    
+    if (chartFitness) {
+        chartFitness.data.labels = labels;
+        chartFitness.data.datasets[0].data = values;
+        chartFitness.update();
+    } else {
+        chartFitness = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Тренировки',
+                    data: values,
+                    backgroundColor: values.map(v => v > 0 ? '#30D158' : 'rgba(255, 255, 255, 0.1)'),
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { display: false, min: 0, max: 2 }, // Just to show presence
+                    x: { ticks: { color: 'rgba(255,255,255,0.5)' }, grid: { display: false } }
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { enabled: false }
+                }
+            }
+        });
+    }
+}
+
+function renderSleepChart(data) {
+    const ctx = document.getElementById('sleepChart');
+    if (!ctx) return;
+    
+    // Sort chronologically
+    data.sort((a, b) => new Date(a.date) - new Date(b.date));
+    
+    const labels = data.map(d => d.date.split('-').slice(1).join('/')); // MM/DD
+    const values = data.map(d => d.sleep_hours);
+    
+    if (chartSleep) {
+        chartSleep.data.labels = labels;
+        chartSleep.data.datasets[0].data = values;
+        chartSleep.update();
+    } else {
+        chartSleep = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Сон (ч)',
+                    data: values,
+                    borderColor: '#0A84FF',
+                    backgroundColor: 'rgba(10, 132, 255, 0.2)',
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { 
+                        min: 0, max: 12,
+                        ticks: { color: 'rgba(255,255,255,0.5)', stepSize: 2 },
+                        grid: { color: 'rgba(255,255,255,0.1)' }
+                    },
+                    x: { ticks: { color: 'rgba(255,255,255,0.5)' }, grid: { display: false } }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    }
+}
 
 function openView(viewId) {
     document.querySelectorAll('main').forEach(el => {
@@ -469,6 +560,13 @@ async function fetchFitness() {
             list.innerHTML = `<div class="loading">Нет тренировок на этот день.</div>`;
         }
         if (window.lucide) lucide.createIcons();
+        
+        // Fetch Chart
+        const chartRes = await fetch('/api/fitness/chart', { headers });
+        if (chartRes.ok) {
+            const chartData = await chartRes.json();
+            renderFitnessChart(chartData.chart || []);
+        }
     } catch (e) {
         document.getElementById('fitness-list').innerHTML = `<div class="loading">Ошибка</div>`;
     }
@@ -764,6 +862,13 @@ async function fetchHealth() {
         renderEnergyChart(data7.health || []);
 
         if (window.lucide) lucide.createIcons();
+        
+        // Fetch Sleep Chart
+        const sleepChartRes = await fetch('/api/health/chart', { headers });
+        if (sleepChartRes.ok) {
+            const chartData = await sleepChartRes.json();
+            renderSleepChart(chartData.chart || []);
+        }
     } catch (e) {
         document.getElementById('health-list').innerHTML = `<div class="loading">Ошибка</div>`;
     }

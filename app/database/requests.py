@@ -520,3 +520,44 @@ async def delete_finance_log(user_id: int, log_id: int):
     async with async_session() as session:
         await session.execute(delete(FinanceLog).where(FinanceLog.id == log_id, FinanceLog.user_id == user_id))
         await session.commit()
+
+async def get_fitness_chart_data(user_id: int, days: int = 14):
+    tz_name = await get_user_timezone(user_id)
+    now_user = datetime.now(ZoneInfo(tz_name))
+    start_date = (now_user - timedelta(days=days-1)).strftime("%Y-%m-%d")
+    async with async_session() as session:
+        query = select(WorkoutLog).where(
+            WorkoutLog.user_id == user_id,
+            WorkoutLog.date_time >= start_date
+        )
+        logs = await session.scalars(query)
+        data = {}
+        for d in range(days):
+            date_str = (now_user - timedelta(days=days-1-d)).strftime("%Y-%m-%d")
+            data[date_str] = 0
+        for log in logs:
+            date_only = log.date_time.split(" ")[0]
+            if date_only in data:
+                data[date_only] += 1
+        return [{"date": k, "count": v} for k, v in data.items()]
+
+async def get_health_chart_data(user_id: int, days: int = 14):
+    tz_name = await get_user_timezone(user_id)
+    now_user = datetime.now(ZoneInfo(tz_name))
+    start_date = (now_user - timedelta(days=days-1)).strftime("%Y-%m-%d")
+    async with async_session() as session:
+        query = select(HealthLog).where(
+            HealthLog.user_id == user_id,
+            HealthLog.date_time >= start_date
+        )
+        logs = await session.scalars(query)
+        data = {}
+        for d in range(days):
+            date_str = (now_user - timedelta(days=days-1-d)).strftime("%Y-%m-%d")
+            data[date_str] = 0.0
+        for log in logs:
+            date_only = log.date_time.split(" ")[0]
+            if date_only in data:
+                # Store the max sleep hours for that day (in case of multiple entries, max is usually best)
+                data[date_only] = max(data[date_only], log.sleep_hours)
+        return [{"date": k, "sleep_hours": v} for k, v in data.items()]
