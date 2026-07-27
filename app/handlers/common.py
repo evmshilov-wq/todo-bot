@@ -24,6 +24,30 @@ async def cmd_start_and_menu(message: types.Message):
     
     await message.answer(text=text, reply_markup=builder.as_markup())
 
+@router.message(Command("nuke"))
+async def cmd_nuke(message: types.Message):
+    user_id = message.from_user.id
+    from app.database.engine import async_session
+    from app.database.models import Task, Habit, WorkoutLog, NutritionLog, HealthLog, HobbyLog, FinanceLog, Memory, Note, ChatMessage, User
+    from sqlalchemy import delete, select
+    async with async_session() as session:
+        await session.execute(delete(Task).where(Task.user_id == user_id))
+        await session.execute(delete(Habit).where(Habit.user_id == user_id))
+        await session.execute(delete(WorkoutLog).where(WorkoutLog.user_id == user_id))
+        await session.execute(delete(NutritionLog).where(NutritionLog.user_id == user_id))
+        await session.execute(delete(HealthLog).where(HealthLog.user_id == user_id))
+        await session.execute(delete(HobbyLog).where(HobbyLog.user_id == user_id))
+        await session.execute(delete(FinanceLog).where(FinanceLog.user_id == user_id))
+        await session.execute(delete(Memory).where(Memory.user_id == user_id))
+        await session.execute(delete(Note).where(Note.user_id == user_id))
+        await session.execute(delete(ChatMessage).where(ChatMessage.user_id == user_id))
+        user = await session.scalar(select(User).where(User.telegram_id == user_id))
+        if user:
+            user.xp = 0
+            user.level = 1
+        await session.commit()
+    await message.answer("💥 База данных успешно обнулена! Приложение теперь полностью чистое.")
+
 @router.message(lambda message: message.document and message.document.file_name == 'credentials.json')
 async def handle_credentials_upload(message: types.Message, bot: Bot):
     # Security check: you might want to restrict this to admins only, 
