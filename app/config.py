@@ -16,7 +16,7 @@ if not os.path.exists("/data"):
 
 DEFAULT_TZ = "Europe/Moscow"
 SCOPES = ['https://www.googleapis.com/auth/calendar.events']
-AI_MODEL = "models/gemini-1.5-flash"
+AI_MODEL = "gemini-1.5-flash"
 
 WEEKDAYS_RU = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
 MONTHS_RU = {

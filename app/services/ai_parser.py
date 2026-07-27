@@ -110,7 +110,7 @@ def get_embedding(text_content: str) -> list[float]:
     for attempt in range(3):
         try:
             response = client.models.embed_content(
-                model="models/embedding-001", 
+                model="text-embedding-004", 
                 contents=text_content
             )
             return response.embeddings[0].values
