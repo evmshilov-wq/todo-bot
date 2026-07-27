@@ -408,7 +408,8 @@ async function fetchNutrition() {
 let activeManualType = null;
 function openManualInput(type) {
     activeManualType = type;
-    document.getElementById('manual-modal').classList.remove('hidden');
+    const modal = document.getElementById('manual-modal');
+    modal.classList.remove('hidden');
     document.getElementById('form-fitness').classList.add('hidden');
     document.getElementById('form-nutrition').classList.add('hidden');
     
@@ -419,10 +420,18 @@ function openManualInput(type) {
         document.getElementById('manual-title').innerText = "Добавить прием пищи";
         document.getElementById('form-nutrition').classList.remove('hidden');
     }
+    
+    setTimeout(() => {
+        modal.classList.add('active');
+    }, 10);
 }
 
 function closeManualInput() {
-    document.getElementById('manual-modal').classList.add('hidden');
+    const modal = document.getElementById('manual-modal');
+    modal.classList.remove('active');
+    setTimeout(() => {
+        modal.classList.add('hidden');
+    }, 300);
     activeManualType = null;
 }
 
