@@ -2,7 +2,7 @@ from datetime import datetime, date, timedelta
 from sqlalchemy import select, update, delete
 from zoneinfo import ZoneInfo
 from app.database.engine import async_session
-from app.database.models import User, Category, Task, Habit, HabitLog, ChatMessage, Memory, Note, WorkoutLog, NutritionLog, InteractionLog, HobbyLog
+from app.database.models import User, Category, Task, Habit, HabitLog, ChatMessage, Memory, Note, WorkoutLog, NutritionLog, InteractionLog, HobbyLog, HealthLog, FinanceLog
 from app.config import DEFAULT_TZ
 
 async def get_all_users():
@@ -424,4 +424,58 @@ async def get_all_hobby_logs(user_id: int, limit: int = 50):
 async def delete_hobby_log(user_id: int, log_id: int):
     async with async_session() as session:
         await session.execute(delete(HobbyLog).where(HobbyLog.id == log_id, HobbyLog.user_id == user_id))
+        await session.commit()
+
+# --- Health Logs ---
+async def add_health_log(user_id: int, date_time: str, sleep_hours: float = 0, water_ml: int = 0, energy_level: int = 0, notes: str = None):
+    async with async_session() as session:
+        session.add(HealthLog(user_id=user_id, date_time=date_time, sleep_hours=sleep_hours, water_ml=water_ml, energy_level=energy_level, notes=notes))
+        await session.commit()
+
+async def get_health_logs_for_date(user_id: int, target_date: date):
+    async with async_session() as session:
+        date_str = target_date.strftime("%Y-%m-%d")
+        query = select(HealthLog).where(
+            HealthLog.user_id == user_id,
+            HealthLog.date_time.startswith(date_str)
+        ).order_by(HealthLog.id.desc())
+        result = await session.scalars(query)
+        return [{"id": h.id, "date_time": h.date_time, "sleep_hours": h.sleep_hours, "water_ml": h.water_ml, "energy_level": h.energy_level, "notes": h.notes} for h in result.all()]
+
+async def get_health_logs_for_period(user_id: int, start_date: date, end_date: date):
+    async with async_session() as session:
+        start_str = start_date.strftime("%Y-%m-%d")
+        end_str = end_date.strftime("%Y-%m-%d")
+        query = select(HealthLog).where(
+            HealthLog.user_id == user_id,
+            HealthLog.date_time >= start_str,
+            HealthLog.date_time <= f"{end_str} 23:59"
+        ).order_by(HealthLog.date_time.asc())
+        result = await session.scalars(query)
+        return [{"id": h.id, "date_time": h.date_time, "sleep_hours": h.sleep_hours, "water_ml": h.water_ml, "energy_level": h.energy_level, "notes": h.notes} for h in result.all()]
+
+async def delete_health_log(user_id: int, log_id: int):
+    async with async_session() as session:
+        await session.execute(delete(HealthLog).where(HealthLog.id == log_id, HealthLog.user_id == user_id))
+        await session.commit()
+
+# --- Finance Logs ---
+async def add_finance_log(user_id: int, date_time: str, amount: float, currency: str = "RUB", category: str = None, transaction_type: str = "expense", notes: str = None):
+    async with async_session() as session:
+        session.add(FinanceLog(user_id=user_id, date_time=date_time, amount=amount, currency=currency, category=category, transaction_type=transaction_type, notes=notes))
+        await session.commit()
+
+async def get_finance_logs_for_date(user_id: int, target_date: date):
+    async with async_session() as session:
+        date_str = target_date.strftime("%Y-%m-%d")
+        query = select(FinanceLog).where(
+            FinanceLog.user_id == user_id,
+            FinanceLog.date_time.startswith(date_str)
+        ).order_by(FinanceLog.id.desc())
+        result = await session.scalars(query)
+        return [{"id": f.id, "date_time": f.date_time, "amount": f.amount, "currency": f.currency, "category": f.category, "transaction_type": f.transaction_type, "notes": f.notes} for f in result.all()]
+
+async def delete_finance_log(user_id: int, log_id: int):
+    async with async_session() as session:
+        await session.execute(delete(FinanceLog).where(FinanceLog.id == log_id, FinanceLog.user_id == user_id))
         await session.commit()

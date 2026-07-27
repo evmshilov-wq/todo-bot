@@ -1,4 +1,4 @@
-from sqlalchemy import BigInteger, String, Integer, ForeignKey, Date
+from sqlalchemy import BigInteger, String, Integer, ForeignKey, Date, Float
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from datetime import date
 
@@ -123,4 +123,25 @@ class HobbyLog(Base):
     hobby_name: Mapped[str] = mapped_column(String)
     duration_minutes: Mapped[int] = mapped_column(Integer, default=0)
     date_time: Mapped[str] = mapped_column(String)
+    notes: Mapped[str] = mapped_column(String, nullable=True)
+
+class HealthLog(Base):
+    __tablename__ = 'health_logs'
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(BigInteger)
+    date_time: Mapped[str] = mapped_column(String)
+    sleep_hours: Mapped[float] = mapped_column(Float, default=0.0)
+    water_ml: Mapped[int] = mapped_column(Integer, default=0)
+    energy_level: Mapped[int] = mapped_column(Integer, default=0) # 1-10
+    notes: Mapped[str] = mapped_column(String, nullable=True)
+
+class FinanceLog(Base):
+    __tablename__ = 'finance_logs'
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(BigInteger)
+    date_time: Mapped[str] = mapped_column(String)
+    amount: Mapped[float] = mapped_column(Float, default=0.0)
+    currency: Mapped[str] = mapped_column(String, default="RUB")
+    category: Mapped[str] = mapped_column(String, nullable=True)
+    transaction_type: Mapped[str] = mapped_column(String, default="expense") # expense / income
     notes: Mapped[str] = mapped_column(String, nullable=True)

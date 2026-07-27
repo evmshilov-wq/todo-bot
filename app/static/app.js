@@ -53,6 +53,12 @@ function openView(viewId) {
     } else if (viewId === 'view-hobbies') {
         renderDatePicker('hobbies-date-picker');
         fetchHobbies();
+    } else if (viewId === 'view-health') {
+        renderDatePicker('health-date-picker');
+        fetchHealth();
+    } else if (viewId === 'view-finance') {
+        renderDatePicker('finance-date-picker');
+        fetchFinance();
     }
 }
 
@@ -110,12 +116,16 @@ function selectDate(dateStr) {
         document.getElementById('nutrition-title').innerText = "Приемы пищи за сегодня";
         document.getElementById('relationships-title').innerText = "Встречи за сегодня";
         document.getElementById('hobbies-title').innerText = "Хобби за сегодня";
+        document.getElementById('health-title').innerText = "Записи за сегодня";
+        document.getElementById('finance-title').innerText = "Транзакции за сегодня";
     } else {
         els.tasksTitle.innerText = `Задачи на ${dateFormatted}`;
         document.getElementById('fitness-title').innerText = `Упражнения на ${dateFormatted}`;
         document.getElementById('nutrition-title').innerText = `Приемы пищи на ${dateFormatted}`;
         document.getElementById('relationships-title').innerText = `Встречи на ${dateFormatted}`;
         document.getElementById('hobbies-title').innerText = `Хобби на ${dateFormatted}`;
+        document.getElementById('health-title').innerText = `Записи на ${dateFormatted}`;
+        document.getElementById('finance-title').innerText = `Транзакции на ${dateFormatted}`;
     }
     
     const activeView = document.querySelector('main.view-active').id;
@@ -134,6 +144,12 @@ function selectDate(dateStr) {
     } else if (activeView === 'view-hobbies') {
         renderDatePicker('hobbies-date-picker');
         fetchHobbies();
+    } else if (activeView === 'view-health') {
+        renderDatePicker('health-date-picker');
+        fetchHealth();
+    } else if (activeView === 'view-finance') {
+        renderDatePicker('finance-date-picker');
+        fetchFinance();
     }
 }
 
@@ -635,6 +651,206 @@ async function saveManualHobby() {
         document.getElementById('hobbies-notes').value = '';
         closeManualInput();
         fetchHobbies();
+    } catch (e) {
+        alert("Ошибка при сохранении");
+    }
+}
+
+async function fetchHealth() {
+    try {
+        const tzOffset = selectedDate.getTimezoneOffset() * 60000;
+        const localISOTime = (new Date(selectedDate.getTime() - tzOffset)).toISOString().split('T')[0];
+        
+        const res = await fetch(`/api/health?date=${localISOTime}`, { headers });
+        const data = await res.json();
+        const list = document.getElementById('health-list');
+        
+        let totalSleep = 0;
+        let totalWater = 0;
+        
+        if (data.health && data.health.length > 0) {
+            list.innerHTML = data.health.map(h => {
+                totalSleep += h.sleep_hours || 0;
+                totalWater += h.water_ml || 0;
+                return `
+                <div class="task-item">
+                    <div class="task-circle" style="border-color: #FF9500;"><i data-lucide="activity" style="width: 14px; height: 14px; color: #FF9500;"></i></div>
+                    <div class="task-content">
+                        <div class="task-text">${h.notes || 'Запись'}</div>
+                        <div class="task-meta">Сон: ${h.sleep_hours}ч | Вода: ${h.water_ml}мл | Энергия: ${h.energy_level}/10</div>
+                    </div>
+                </div>
+            `}).join('');
+        } else {
+            list.innerHTML = `<div class="loading">Нет записей о здоровье.</div>`;
+        }
+        
+        document.getElementById('health-total-sleep').innerText = totalSleep + ' ч';
+        document.getElementById('health-total-water').innerText = totalWater + ' мл';
+
+        // Fetch energy data for the chart (last 7 days)
+        const res7 = await fetch(`/api/health?period=7days`, { headers });
+        const data7 = await res7.json();
+        renderEnergyChart(data7.health || []);
+
+        if (window.lucide) lucide.createIcons();
+    } catch (e) {
+        document.getElementById('health-list').innerHTML = `<div class="loading">Ошибка</div>`;
+    }
+}
+
+function renderEnergyChart(logs) {
+    const container = document.getElementById('health-energy-chart');
+    container.innerHTML = '';
+    
+    // Create a map of last 7 dates
+    const today = new Date();
+    const chartData = [];
+    for (let i=6; i>=0; i--) {
+        const d = new Date(today);
+        d.setDate(d.getDate() - i);
+        const dateStr = d.toISOString().split('T')[0]; // simple format
+        
+        // Find max energy level for this day
+        const dayLogs = logs.filter(l => l.date_time.startsWith(dateStr));
+        const maxEnergy = dayLogs.reduce((max, l) => Math.max(max, l.energy_level || 0), 0);
+        chartData.push({ date: d.getDate(), energy: maxEnergy });
+    }
+    
+    chartData.forEach(d => {
+        const height = d.energy > 0 ? (d.energy / 10) * 100 : 5; // min 5% height
+        const color = d.energy >= 7 ? '#30D158' : (d.energy >= 4 ? '#FF9F0A' : '#FF453A');
+        
+        container.innerHTML += `
+            <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;">
+                <div style="width: 100%; height: 80px; display: flex; align-items: flex-end; background: rgba(255,255,255,0.1); border-radius: 4px;">
+                    <div style="width: 100%; height: ${height}%; background: ${color}; border-radius: 4px; transition: height 0.3s ease;"></div>
+                </div>
+                <span style="font-size: 10px; color: rgba(255,255,255,0.5);">${d.date}</span>
+            </div>
+        `;
+    });
+}
+
+async function saveManualHealth() {
+    const sleep = document.getElementById('health-sleep').value;
+    const water = document.getElementById('health-water').value;
+    const energy = document.getElementById('health-energy').value;
+    const notes = document.getElementById('health-notes').value;
+    
+    const tzOffset = selectedDate.getTimezoneOffset() * 60000;
+    const localISOTime = (new Date(selectedDate.getTime() - tzOffset)).toISOString().split('T')[0];
+    const dt = `${localISOTime} 12:00`;
+
+    try {
+        await fetch('/api/health', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ 
+                sleep_hours: parseFloat(sleep) || 0, 
+                water_ml: parseInt(water) || 0, 
+                energy_level: parseInt(energy) || 0, 
+                notes: notes, 
+                date_time: dt 
+            })
+        });
+        document.getElementById('health-sleep').value = '';
+        document.getElementById('health-water').value = '';
+        document.getElementById('health-energy').value = '';
+        document.getElementById('health-notes').value = '';
+        closeManualInput();
+        fetchHealth();
+    } catch (e) {
+        alert("Ошибка при сохранении");
+    }
+}
+
+let currentFinanceType = 'expense';
+function setFinanceType(type) {
+    currentFinanceType = type;
+    document.getElementById('finance-type').value = type;
+    document.getElementById('finance-type-expense').style.background = type === 'expense' ? '#FF453A' : 'rgba(255,255,255,0.1)';
+    document.getElementById('finance-type-expense').style.color = type === 'expense' ? 'white' : 'rgba(255,255,255,0.5)';
+    document.getElementById('finance-type-income').style.background = type === 'income' ? '#30D158' : 'rgba(255,255,255,0.1)';
+    document.getElementById('finance-type-income').style.color = type === 'income' ? 'white' : 'rgba(255,255,255,0.5)';
+}
+
+async function fetchFinance() {
+    try {
+        const tzOffset = selectedDate.getTimezoneOffset() * 60000;
+        const localISOTime = (new Date(selectedDate.getTime() - tzOffset)).toISOString().split('T')[0];
+        
+        const res = await fetch(`/api/finance?date=${localISOTime}`, { headers });
+        const data = await res.json();
+        const list = document.getElementById('finance-list');
+        
+        let totalIncome = 0;
+        let totalExpense = 0;
+        
+        if (data.finance && data.finance.length > 0) {
+            list.innerHTML = data.finance.map(f => {
+                if (f.transaction_type === 'income') {
+                    totalIncome += f.amount || 0;
+                } else {
+                    totalExpense += f.amount || 0;
+                }
+                const isIncome = f.transaction_type === 'income';
+                const color = isIncome ? '#30D158' : '#FF453A';
+                const sign = isIncome ? '+' : '-';
+                
+                return `
+                <div class="task-item">
+                    <div class="task-circle" style="border-color: ${color};"><i data-lucide="dollar-sign" style="width: 14px; height: 14px; color: ${color};"></i></div>
+                    <div class="task-content">
+                        <div class="task-text">${f.category || 'Без категории'}</div>
+                        <div class="task-meta">${f.notes || ''}</div>
+                    </div>
+                    <div style="color: ${color}; font-weight: 600; font-size: 14px; white-space: nowrap;">
+                        ${sign}${f.amount} ${f.currency}
+                    </div>
+                </div>
+            `}).join('');
+        } else {
+            list.innerHTML = `<div class="loading">Нет транзакций за этот день.</div>`;
+        }
+        
+        document.getElementById('finance-total-income').innerText = totalIncome + ' ₽';
+        document.getElementById('finance-total-expense').innerText = totalExpense + ' ₽';
+
+        if (window.lucide) lucide.createIcons();
+    } catch (e) {
+        document.getElementById('finance-list').innerHTML = `<div class="loading">Ошибка</div>`;
+    }
+}
+
+async function saveManualFinance() {
+    const amount = document.getElementById('finance-amount').value;
+    const category = document.getElementById('finance-category').value;
+    const notes = document.getElementById('finance-notes').value;
+    
+    if (!amount) return alert("Введите сумму!");
+    
+    const tzOffset = selectedDate.getTimezoneOffset() * 60000;
+    const localISOTime = (new Date(selectedDate.getTime() - tzOffset)).toISOString().split('T')[0];
+    const dt = `${localISOTime} 12:00`;
+
+    try {
+        await fetch('/api/finance', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ 
+                amount: parseFloat(amount), 
+                category: category, 
+                transaction_type: currentFinanceType, 
+                notes: notes, 
+                date_time: dt 
+            })
+        });
+        document.getElementById('finance-amount').value = '';
+        document.getElementById('finance-category').value = '';
+        document.getElementById('finance-notes').value = '';
+        closeManualInput();
+        fetchFinance();
     } catch (e) {
         alert("Ошибка при сохранении");
     }

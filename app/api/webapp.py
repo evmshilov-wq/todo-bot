@@ -310,6 +310,62 @@ async def api_add_hobby(request: web.Request):
     await add_hobby_log(user_id, dt, data.get("hobby_name"), data.get("duration_minutes", 0), data.get("notes"))
     return web.json_response({"status": "ok"})
 
+@routes.get("/api/health")
+async def api_get_health(request: web.Request):
+    user_id = get_user_id(request)
+    if not user_id: return web.json_response({"error": "Unauthorized"}, status=401)
+    date_str = request.query.get("date")
+    from app.database.requests import get_health_logs_for_date, get_health_logs_for_period
+    
+    if request.query.get("period") == "7days":
+        # Get for last 7 days for the chart
+        end_date = datetime.now().date()
+        start_date = end_date - timedelta(days=6)
+        logs = await get_health_logs_for_period(user_id, start_date, end_date)
+        return web.json_response({"health": logs})
+        
+    if date_str:
+        target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+        logs = await get_health_logs_for_date(user_id, target_date)
+    else:
+        logs = []
+    return web.json_response({"health": logs})
+
+@routes.post("/api/health")
+async def api_add_health(request: web.Request):
+    user_id = get_user_id(request)
+    if not user_id: return web.json_response({"error": "Unauthorized"}, status=401)
+    data = await request.json()
+    from app.database.requests import add_health_log, get_user_timezone
+    user_tz = await get_user_timezone(user_id)
+    dt = data.get("date_time") or datetime.now(ZoneInfo(user_tz)).strftime("%Y-%m-%d %H:%M")
+    await add_health_log(user_id, dt, data.get("sleep_hours", 0), data.get("water_ml", 0), data.get("energy_level", 0), data.get("notes"))
+    return web.json_response({"status": "ok"})
+
+@routes.get("/api/finance")
+async def api_get_finance(request: web.Request):
+    user_id = get_user_id(request)
+    if not user_id: return web.json_response({"error": "Unauthorized"}, status=401)
+    date_str = request.query.get("date")
+    from app.database.requests import get_finance_logs_for_date
+    if date_str:
+        target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+        logs = await get_finance_logs_for_date(user_id, target_date)
+    else:
+        logs = []
+    return web.json_response({"finance": logs})
+
+@routes.post("/api/finance")
+async def api_add_finance(request: web.Request):
+    user_id = get_user_id(request)
+    if not user_id: return web.json_response({"error": "Unauthorized"}, status=401)
+    data = await request.json()
+    from app.database.requests import add_finance_log, get_user_timezone
+    user_tz = await get_user_timezone(user_id)
+    dt = data.get("date_time") or datetime.now(ZoneInfo(user_tz)).strftime("%Y-%m-%d %H:%M")
+    await add_finance_log(user_id, dt, data.get("amount", 0), data.get("currency", "RUB"), data.get("category"), data.get("transaction_type", "expense"), data.get("notes"))
+    return web.json_response({"status": "ok"})
+
 @routes.post("/api/ai_text")
 async def api_ai_text(request: web.Request):
     user_id = get_user_id(request)
@@ -360,7 +416,9 @@ async def api_ai_text(request: web.Request):
         "workouts": ai_response.get("workouts", []),
         "nutrition": ai_response.get("nutrition", []),
         "interactions": ai_response.get("interactions", []),
-        "hobbies": ai_response.get("hobbies", [])
+        "hobbies": ai_response.get("hobbies", []),
+        "health": ai_response.get("health", []),
+        "finance": ai_response.get("finance", [])
     }
     import logging
     logging.info(f"Parsed AI text mutations: {mutations}")
@@ -431,6 +489,17 @@ async def api_ai_text(request: web.Request):
         if h.get("action") == "add" and h.get("hobby_name"):
             dt = h.get("date_time") or datetime.now(ZoneInfo(user_tz)).strftime("%Y-%m-%d %H:%M")
             await add_hobby_log(user_id, dt, h["hobby_name"], h.get("duration_minutes", 0), h.get("notes"))
+
+    from app.database.requests import add_health_log, add_finance_log
+    for hl in mutations.get("health", []):
+        if hl.get("action") == "add":
+            dt = hl.get("date_time") or datetime.now(ZoneInfo(user_tz)).strftime("%Y-%m-%d %H:%M")
+            await add_health_log(user_id, dt, hl.get("sleep_hours", 0), hl.get("water_ml", 0), hl.get("energy_level", 0), hl.get("notes"))
+            
+    for fl in mutations.get("finance", []):
+        if fl.get("action") == "add" and fl.get("amount"):
+            dt = fl.get("date_time") or datetime.now(ZoneInfo(user_tz)).strftime("%Y-%m-%d %H:%M")
+            await add_finance_log(user_id, dt, fl.get("amount"), fl.get("currency", "RUB"), fl.get("category"), fl.get("transaction_type", "expense"), fl.get("notes"))
 
     return web.json_response({"status": "ok", "reply": reply_text, "mutations": mutations})
 
@@ -552,6 +621,17 @@ async def api_shortcut(request: web.Request):
         if h.get("action") == "add" and h.get("hobby_name"):
             dt = h.get("date_time") or datetime.now(ZoneInfo(user_tz)).strftime("%Y-%m-%d %H:%M")
             await add_hobby_log(user_id, dt, h["hobby_name"], h.get("duration_minutes", 0), h.get("notes"))
+
+    from app.database.requests import add_health_log, add_finance_log
+    for hl in mutations.get("health", []):
+        if hl.get("action") == "add":
+            dt = hl.get("date_time") or datetime.now(ZoneInfo(user_tz)).strftime("%Y-%m-%d %H:%M")
+            await add_health_log(user_id, dt, hl.get("sleep_hours", 0), hl.get("water_ml", 0), hl.get("energy_level", 0), hl.get("notes"))
+            
+    for fl in mutations.get("finance", []):
+        if fl.get("action") == "add" and fl.get("amount"):
+            dt = fl.get("date_time") or datetime.now(ZoneInfo(user_tz)).strftime("%Y-%m-%d %H:%M")
+            await add_finance_log(user_id, dt, fl.get("amount"), fl.get("currency", "RUB"), fl.get("category"), fl.get("transaction_type", "expense"), fl.get("notes"))
 
     # Send a push notification back to the user via Telegram API
     import aiohttp
@@ -690,6 +770,17 @@ async def api_ai_voice(request: web.Request):
         if h.get("action") == "add" and h.get("hobby_name"):
             dt = h.get("date_time") or datetime.now(ZoneInfo(user_tz)).strftime("%Y-%m-%d %H:%M")
             await add_hobby_log(user_id, dt, h["hobby_name"], h.get("duration_minutes", 0), h.get("notes"))
+
+    from app.database.requests import add_health_log, add_finance_log
+    for hl in mutations.get("health", []):
+        if hl.get("action") == "add":
+            dt = hl.get("date_time") or datetime.now(ZoneInfo(user_tz)).strftime("%Y-%m-%d %H:%M")
+            await add_health_log(user_id, dt, hl.get("sleep_hours", 0), hl.get("water_ml", 0), hl.get("energy_level", 0), hl.get("notes"))
+            
+    for fl in mutations.get("finance", []):
+        if fl.get("action") == "add" and fl.get("amount"):
+            dt = fl.get("date_time") or datetime.now(ZoneInfo(user_tz)).strftime("%Y-%m-%d %H:%M")
+            await add_finance_log(user_id, dt, fl.get("amount"), fl.get("currency", "RUB"), fl.get("category"), fl.get("transaction_type", "expense"), fl.get("notes"))
 
     return web.json_response({"status": "ok", "reply": reply_text, "mutations": mutations})
 

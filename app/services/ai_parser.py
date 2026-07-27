@@ -72,6 +72,23 @@ class HobbyActionModel(BaseModel):
     notes: Optional[str] = Field(None, description="Что конкретно делал (например, 'Прочитал 20 страниц')")
     date_time: Optional[str] = Field(None, description="Дата в формате YYYY-MM-DD HH:MM")
 
+class HealthActionModel(BaseModel):
+    action: Literal["add", "delete"] = Field(description="add или delete")
+    sleep_hours: Optional[float] = Field(0.0, description="Сколько часов спал")
+    water_ml: Optional[int] = Field(0, description="Сколько воды выпил в мл")
+    energy_level: Optional[int] = Field(0, description="Уровень энергии от 1 до 10")
+    notes: Optional[str] = Field(None, description="Симптомы, самочувствие, настроение")
+    date_time: Optional[str] = Field(None, description="Дата в формате YYYY-MM-DD HH:MM")
+
+class FinanceActionModel(BaseModel):
+    action: Literal["add", "delete"] = Field(description="add или delete")
+    amount: float = Field(description="Сумма транзакции")
+    currency: Optional[str] = Field("RUB", description="Валюта (RUB, USD, EUR и т.д.)")
+    category: Optional[str] = Field(None, description="Категория (Еда, Транспорт, Зарплата и т.д.)")
+    transaction_type: Literal["expense", "income"] = Field(description="Тип: expense (расход) или income (доход)")
+    notes: Optional[str] = Field(None, description="Комментарий к транзакции (например, 'Покупка кофе')")
+    date_time: Optional[str] = Field(None, description="Дата в формате YYYY-MM-DD HH:MM")
+
 class AIChatResponseModel(BaseModel):
     reply: str = Field(description="Эмпатичный и естественный ответ пользователю. Без роботизированных фраз.")
     tasks: List[TaskActionModel] = Field(default_factory=list, description="Действия с задачами, если требуются")
@@ -81,6 +98,8 @@ class AIChatResponseModel(BaseModel):
     nutrition: List[NutritionActionModel] = Field(default_factory=list, description="Приемы пищи (еда, БЖУ, калории)")
     interactions: List[InteractionActionModel] = Field(default_factory=list, description="Встречи и логи общения с людьми")
     hobbies: List[HobbyActionModel] = Field(default_factory=list, description="Занятия хобби (время, описание)")
+    health: List[HealthActionModel] = Field(default_factory=list, description="Показатели здоровья, сон, вода, самочувствие")
+    finance: List[FinanceActionModel] = Field(default_factory=list, description="Финансовые доходы и расходы")
     onboarding: Optional[OnboardingActionModel] = Field(None, description="Управление статусом интервью/онбординга")
 
 

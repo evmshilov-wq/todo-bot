@@ -161,7 +161,76 @@
             </div>
         </main>
 
-        <!-- Detailed View: Nutrition -->
+        <main id="view-health" class="view-hidden">
+            <div class="view-header">
+                <button class="icon-btn-back" onclick="openView('view-dashboard')">
+                    <i data-lucide="chevron-left"></i> Назад
+                </button>
+                <h2>Здоровье и Сон</h2>
+                <button class="icon-btn primary-icon" onclick="openManualInput('health')"><i data-lucide="plus"></i></button>
+            </div>
+            <div class="content-section" style="padding-top: 80px;">
+                <div id="health-date-picker" class="date-picker"></div>
+                
+                <div class="macros-container" style="margin-top: 16px;">
+                    <div class="macro-item">
+                        <span class="macro-label">Сон</span>
+                        <strong class="macro-value" id="health-total-sleep">0 ч</strong>
+                    </div>
+                    <div class="macro-item">
+                        <span class="macro-label">Вода</span>
+                        <strong class="macro-value" id="health-total-water">0 мл</strong>
+                    </div>
+                </div>
+
+                <div class="section-header" style="margin-top: 16px;">
+                    <h3>Энергия за 7 дней</h3>
+                </div>
+                <div id="health-energy-chart" style="display: flex; align-items: flex-end; gap: 8px; height: 120px; background: rgba(255,255,255,0.05); padding: 12px; border-radius: 12px; overflow-x: auto;">
+                    <div class="loading">Загрузка графика...</div>
+                </div>
+
+                <div class="section-header" style="margin-top: 16px;">
+                    <h3 id="health-title">Записи за день</h3>
+                </div>
+                <div id="health-list" class="items-list">
+                    <div class="loading">Загрузка...</div>
+                </div>
+            </div>
+        </main>
+
+        <main id="view-finance" class="view-hidden">
+            <div class="view-header">
+                <button class="icon-btn-back" onclick="openView('view-dashboard')">
+                    <i data-lucide="chevron-left"></i> Назад
+                </button>
+                <h2>Финансы</h2>
+                <button class="icon-btn primary-icon" onclick="openManualInput('finance')"><i data-lucide="plus"></i></button>
+            </div>
+            <div class="content-section" style="padding-top: 80px;">
+                <div id="finance-date-picker" class="date-picker"></div>
+                
+                <div class="macros-container" style="margin-top: 16px;">
+                    <div class="macro-item">
+                        <span class="macro-label">Доход</span>
+                        <strong class="macro-value" style="color: #30D158;" id="finance-total-income">0 ₽</strong>
+                    </div>
+                    <div class="macro-item">
+                        <span class="macro-label">Расход</span>
+                        <strong class="macro-value" style="color: #FF453A;" id="finance-total-expense">0 ₽</strong>
+                    </div>
+                </div>
+
+                <div class="section-header" style="margin-top: 16px;">
+                    <h3 id="finance-title">Транзакции за день</h3>
+                </div>
+                <div id="finance-list" class="items-list">
+                    <div class="loading">Загрузка...</div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Floating Chat Button (Hidden in detailed views, visible in dashboard) -->
         <main id="view-nutrition" class="view-hidden">
             <div class="view-header">
                 <button class="icon-btn-back" onclick="openView('view-dashboard')">
@@ -249,9 +318,7 @@
                 </div>
             </div>
         </main>
-        <main id="view-health" class="view-hidden"><div class="view-header"><button class="icon-btn-back" onclick="openView('view-dashboard')"><i data-lucide="chevron-left"></i> Назад</button><h2>Здоровье</h2></div><div class="content-section"><p>Утренние чекапы работают через чат Telegram.</p></div></main>
-        <main id="view-finance" class="view-hidden"><div class="view-header"><button class="icon-btn-back" onclick="openView('view-dashboard')"><i data-lucide="chevron-left"></i> Назад</button><h2>Финансы</h2></div><div class="content-section"><p>В разработке</p></div></main>
-
+        
         <!-- Floating Chat Button (Always visible) -->
         <button id="floating-chat-btn" onclick="openChat()">
             <i data-lucide="message-circle"></i>
@@ -365,13 +432,57 @@
                     </div>
                     <button class="primary-btn" onclick="saveManualHobby()" style="width: 100%; margin-top: 16px;">Сохранить</button>
                 </div>
+                
+                <!-- Health Form -->
+                <div id="form-health" class="hidden">
+                    <div class="form-group">
+                        <label>Сон (часов)</label>
+                        <input type="number" step="0.1" id="health-sleep" placeholder="Например: 7.5">
+                    </div>
+                    <div class="form-group">
+                        <label>Вода (мл)</label>
+                        <input type="number" id="health-water" placeholder="Например: 2000">
+                    </div>
+                    <div class="form-group">
+                        <label>Уровень энергии (1-10)</label>
+                        <input type="number" id="health-energy" placeholder="Например: 8">
+                    </div>
+                    <div class="form-group">
+                        <label>Заметки / Симптомы</label>
+                        <input type="text" id="health-notes" placeholder="Например: Болит голова">
+                    </div>
+                    <button class="primary-btn" onclick="saveManualHealth()" style="width: 100%; margin-top: 16px;">Сохранить</button>
+                </div>
+
+                <!-- Finance Form -->
+                <div id="form-finance" class="hidden">
+                    <div style="display: flex; gap: 8px;">
+                        <button id="finance-type-expense" class="primary-btn" style="flex: 1; background: #FF453A; border-radius: 8px;" onclick="setFinanceType('expense')">Расход</button>
+                        <button id="finance-type-income" class="icon-btn" style="flex: 1; background: rgba(255,255,255,0.1); border-radius: 8px; border: none; color: white;" onclick="setFinanceType('income')">Доход</button>
+                    </div>
+                    <input type="hidden" id="finance-type" value="expense">
+                    
+                    <div class="form-group" style="margin-top: 16px;">
+                        <label>Сумма</label>
+                        <input type="number" id="finance-amount" placeholder="Например: 500">
+                    </div>
+                    <div class="form-group">
+                        <label>Категория</label>
+                        <input type="text" id="finance-category" placeholder="Например: Еда, Транспорт, Зарплата">
+                    </div>
+                    <div class="form-group">
+                        <label>Заметки</label>
+                        <input type="text" id="finance-notes" placeholder="Например: Покупка кофе">
+                    </div>
+                    <button class="primary-btn" onclick="saveManualFinance()" style="width: 100%; margin-top: 16px;">Сохранить</button>
+                </div>
             </div>
         </div>
 
     </div>
 
     <!-- Javascript -->
-    <script src="/static/app.js?v=14"></script>
+    <script src="/static/app.js?v=15"></script>
     <script>
         lucide.createIcons();
     </script>
