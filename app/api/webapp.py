@@ -358,7 +358,9 @@ async def api_ai_text(request: web.Request):
         "memories": ai_response.get("memories", []), 
         "notes": ai_response.get("notes", []),
         "workouts": ai_response.get("workouts", []),
-        "nutrition": ai_response.get("nutrition", [])
+        "nutrition": ai_response.get("nutrition", []),
+        "interactions": ai_response.get("interactions", []),
+        "hobbies": ai_response.get("hobbies", [])
     }
     import logging
     logging.info(f"Parsed AI text mutations: {mutations}")
@@ -480,7 +482,15 @@ async def api_shortcut(request: web.Request):
     await add_chat_message(user_id, "assistant", reply_text)
     
     # 5. Process DB mutations
-    mutations = {"tasks": ai_response.get("tasks", []), "memories": ai_response.get("memories", []), "notes": ai_response.get("notes", [])}
+    mutations = {
+        "tasks": ai_response.get("tasks", []), 
+        "memories": ai_response.get("memories", []), 
+        "notes": ai_response.get("notes", []),
+        "workouts": ai_response.get("workouts", []),
+        "nutrition": ai_response.get("nutrition", []),
+        "interactions": ai_response.get("interactions", []),
+        "hobbies": ai_response.get("hobbies", [])
+    }
     
     import json
     for t in mutations["tasks"]:
@@ -519,6 +529,30 @@ async def api_shortcut(request: web.Request):
         elif action == "delete" and n.get("note_id"):
             await delete_note_db(user_id, n["note_id"])
             
+    # 7. Process Workouts & Nutrition
+    from app.database.requests import add_workout, add_nutrition
+    for w in mutations["workouts"]:
+        if w.get("action") == "add" and w.get("exercise_name"):
+            dt = w.get("date_time") or datetime.now(ZoneInfo(user_tz)).strftime("%Y-%m-%d %H:%M")
+            await add_workout(user_id, dt, w["exercise_name"], w.get("weight"), w.get("sets", 1), w.get("reps", 1))
+
+    for n in mutations["nutrition"]:
+        if n.get("action") == "add" and n.get("meal_name"):
+            dt = n.get("date_time") or datetime.now(ZoneInfo(user_tz)).strftime("%Y-%m-%d %H:%M")
+            await add_nutrition(user_id, dt, n["meal_name"], n.get("calories", 0), n.get("protein", 0), n.get("carbs", 0), n.get("fat", 0))
+
+    # 8. Process Interactions & Hobbies
+    from app.database.requests import add_interaction, add_hobby_log
+    for i in mutations.get("interactions", []):
+        if i.get("action") == "add" and i.get("person_name"):
+            dt = i.get("date_time") or datetime.now(ZoneInfo(user_tz)).strftime("%Y-%m-%d %H:%M")
+            await add_interaction(user_id, dt, i["person_name"], i.get("notes"))
+            
+    for h in mutations.get("hobbies", []):
+        if h.get("action") == "add" and h.get("hobby_name"):
+            dt = h.get("date_time") or datetime.now(ZoneInfo(user_tz)).strftime("%Y-%m-%d %H:%M")
+            await add_hobby_log(user_id, dt, h["hobby_name"], h.get("duration_minutes", 0), h.get("notes"))
+
     # Send a push notification back to the user via Telegram API
     import aiohttp
     async with aiohttp.ClientSession() as session:
@@ -584,7 +618,9 @@ async def api_ai_voice(request: web.Request):
         "memories": ai_response.get("memories", []), 
         "notes": ai_response.get("notes", []),
         "workouts": ai_response.get("workouts", []),
-        "nutrition": ai_response.get("nutrition", [])
+        "nutrition": ai_response.get("nutrition", []),
+        "interactions": ai_response.get("interactions", []),
+        "hobbies": ai_response.get("hobbies", [])
     }
     import logging
     logging.info(f"Parsed AI voice mutations: {mutations}")
