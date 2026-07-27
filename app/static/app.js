@@ -709,7 +709,8 @@ function renderEnergyChart(logs) {
     for (let i=6; i>=0; i--) {
         const d = new Date(today);
         d.setDate(d.getDate() - i);
-        const dateStr = d.toISOString().split('T')[0]; // simple format
+        const tzOffset = d.getTimezoneOffset() * 60000;
+        const dateStr = (new Date(d.getTime() - tzOffset)).toISOString().split('T')[0];
         
         // Find max energy level for this day
         const dayLogs = logs.filter(l => l.date_time.startsWith(dateStr));
