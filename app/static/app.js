@@ -627,6 +627,8 @@ function openManualInput(type) {
     if (type === 'fitness') {
         document.getElementById('manual-title').innerText = "Добавить упражнение";
         document.getElementById('form-fitness').classList.remove('hidden');
+        document.getElementById('fitness-template').value = 'custom';
+        renderFitnessTemplate();
     } else if (type === 'nutrition') {
         document.getElementById('manual-title').innerText = "Добавить прием пищи";
         document.getElementById('form-nutrition').classList.remove('hidden');
@@ -658,27 +660,74 @@ function closeManualInput() {
     activeManualType = null;
 }
 
+const workoutTemplates = {
+    custom: [""],
+    template1: ["Жим лежа", "Тяга блока вниз", "Экстензия ног", "Подъем на двуглавые мышцы бедра"],
+    template2: ["Приседания со штангой", "Становая тяга", "Жим гантелей над головой", "Жим вниз блока на трицепсы"],
+    template3: ["Жим лежа под наклоном", "Тяга блока горизонтально", "Экстензия ног", "Подъем на двуглавые мышцы бедра"]
+};
+
+function renderFitnessTemplate() {
+    const template = document.getElementById('fitness-template').value;
+    const container = document.getElementById('fitness-exercises-container');
+    const exercises = workoutTemplates[template] || workoutTemplates.custom;
+    
+    container.innerHTML = exercises.map((exName, index) => `
+        <div class="fitness-exercise-row" style="margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--border-color);">
+            <div class="form-group">
+                <label>Упражнение</label>
+                <input type="text" class="fitness-name" value="${exName}" placeholder="Например: Жим лежа" ${exName ? 'readonly style="background: rgba(255,255,255,0.02);"' : ''}>
+            </div>
+            <div class="form-group">
+                <label>Вес</label>
+                <input type="text" class="fitness-weight" placeholder="Например: 80 кг">
+            </div>
+            <div style="display: flex; gap: 12px;">
+                <div class="form-group" style="flex: 1;">
+                    <label>Подходы</label>
+                    <input type="number" class="fitness-sets" value="3">
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label>Повторения</label>
+                    <input type="number" class="fitness-reps" value="10">
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
 async function saveManualFitness() {
-    const name = document.getElementById('fitness-name').value;
-    const weight = document.getElementById('fitness-weight').value;
-    const sets = parseInt(document.getElementById('fitness-sets').value) || 1;
-    const reps = parseInt(document.getElementById('fitness-reps').value) || 1;
-    if (!name) return;
+    const rows = document.querySelectorAll('.fitness-exercise-row');
+    const exercisesToSave = [];
+    
+    rows.forEach(row => {
+        const name = row.querySelector('.fitness-name').value;
+        const weight = row.querySelector('.fitness-weight').value;
+        const sets = parseInt(row.querySelector('.fitness-sets').value) || 1;
+        const reps = parseInt(row.querySelector('.fitness-reps').value) || 1;
+        if (name) {
+            exercisesToSave.push({ name, weight, sets, reps });
+        }
+    });
+    
+    if (exercisesToSave.length === 0) return;
     
     try {
         const tzOffset = selectedDate.getTimezoneOffset() * 60000;
         const localISOTime = (new Date(selectedDate.getTime() - tzOffset)).toISOString().split('T')[0];
         const dt = `${localISOTime} 12:00`;
         
-        await fetch('/api/fitness', {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({ exercise_name: name, weight, sets, reps, date_time: dt })
-        });
+        // Save sequentially
+        for (const ex of exercisesToSave) {
+            await fetch('/api/fitness', {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({ exercise_name: ex.name, weight: ex.weight, sets: ex.sets, reps: ex.reps, date_time: dt })
+            });
+        }
+        
         closeManualInput();
         fetchFitness();
-        document.getElementById('fitness-name').value = '';
-        document.getElementById('fitness-weight').value = '';
     } catch (e) {
         alert('Ошибка при сохранении');
     }
