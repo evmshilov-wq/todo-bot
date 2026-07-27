@@ -90,10 +90,12 @@ body {
     background-color: var(--card-bg);
     border: 1px solid var(--border-color);
     border-radius: 20px;
-    padding: 20px;
+    padding: 16px;
     display: flex;
-    align-items: center;
-    gap: 16px;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: space-between;
+    aspect-ratio: 1;
     cursor: pointer;
     transition: transform 0.2s, background-color 0.2s;
 }
@@ -530,3 +532,7 @@ body {
     text-align: center;
 }
 
+
+.sphere-icon {
+    margin-bottom: auto;
+}
