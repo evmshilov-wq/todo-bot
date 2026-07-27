@@ -48,6 +48,7 @@ function openView(viewId) {
         renderDatePicker('nutrition-date-picker');
         fetchNutrition();
     } else if (viewId === 'view-relationships') {
+        renderDatePicker('relationships-date-picker');
         fetchRelationships();
     } else if (viewId === 'view-hobbies') {
         renderDatePicker('hobbies-date-picker');
@@ -107,11 +108,13 @@ function selectDate(dateStr) {
         els.tasksTitle.innerText = "Задачи на сегодня";
         document.getElementById('fitness-title').innerText = "Упражнения за сегодня";
         document.getElementById('nutrition-title').innerText = "Приемы пищи за сегодня";
+        document.getElementById('relationships-title').innerText = "Встречи за сегодня";
         document.getElementById('hobbies-title').innerText = "Хобби за сегодня";
     } else {
         els.tasksTitle.innerText = `Задачи на ${dateFormatted}`;
         document.getElementById('fitness-title').innerText = `Упражнения на ${dateFormatted}`;
         document.getElementById('nutrition-title').innerText = `Приемы пищи на ${dateFormatted}`;
+        document.getElementById('relationships-title').innerText = `Встречи на ${dateFormatted}`;
         document.getElementById('hobbies-title').innerText = `Хобби на ${dateFormatted}`;
     }
     
@@ -125,6 +128,9 @@ function selectDate(dateStr) {
     } else if (activeView === 'view-nutrition') {
         renderDatePicker('nutrition-date-picker');
         fetchNutrition();
+    } else if (activeView === 'view-relationships') {
+        renderDatePicker('relationships-date-picker');
+        fetchRelationships();
     } else if (activeView === 'view-hobbies') {
         renderDatePicker('hobbies-date-picker');
         fetchHobbies();
@@ -527,7 +533,9 @@ async function saveManualNutrition() {
 // --- Relationships & Hobbies Logic ---
 async function fetchRelationships() {
     try {
-        const res = await fetch(`/api/relationships`, { headers });
+        const tzOffset = selectedDate.getTimezoneOffset() * 60000;
+        const localISOTime = (new Date(selectedDate.getTime() - tzOffset)).toISOString().split('T')[0];
+        const res = await fetch(`/api/relationships?date=${localISOTime}`, { headers });
         const data = await res.json();
         const list = document.getElementById('relationships-list');
         
@@ -542,7 +550,7 @@ async function fetchRelationships() {
                 </div>
             `).join('');
         } else {
-            list.innerHTML = `<div class="loading">Нет записей о встречах.</div>`;
+            list.innerHTML = `<div class="loading">Нет записей о встречах за этот день.</div>`;
         }
         if (window.lucide) lucide.createIcons();
     } catch (e) {

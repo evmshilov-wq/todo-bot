@@ -266,8 +266,13 @@ async def api_add_nutrition(request: web.Request):
 async def api_get_relationships(request: web.Request):
     user_id = get_user_id(request)
     if not user_id: return web.json_response({"error": "Unauthorized"}, status=401)
-    from app.database.requests import get_interactions
-    interactions = await get_interactions(user_id)
+    date_str = request.query.get("date")
+    from app.database.requests import get_interactions_for_date, get_interactions
+    if date_str:
+        target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+        interactions = await get_interactions_for_date(user_id, target_date)
+    else:
+        interactions = await get_interactions(user_id)
     return web.json_response({"relationships": interactions})
 
 @routes.post("/api/relationships")

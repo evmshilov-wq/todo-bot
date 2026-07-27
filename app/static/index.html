@@ -213,8 +213,9 @@
                 <button class="icon-btn" onclick="openManualInput('relationships')"><i data-lucide="plus"></i></button>
             </div>
             <div class="content-section" style="padding-top: 80px;">
+                <div id="relationships-date-picker" class="date-picker"></div>
                 <div class="section-header" style="margin-top: 16px;">
-                    <h3 id="relationships-title">Лог встреч</h3>
+                    <h3 id="relationships-title">Встречи за день</h3>
                 </div>
                 <div id="relationships-list" class="items-list">
                     <div class="loading">Загрузка встреч...</div>
@@ -231,9 +232,7 @@
                 <button class="icon-btn" onclick="openManualInput('hobbies')"><i data-lucide="plus"></i></button>
             </div>
             <div class="content-section" style="padding-top: 80px;">
-                <div class="horizontal-date-picker" id="hobbies-date-picker">
-                    <!-- JS will fill this -->
-                </div>
+                <div id="hobbies-date-picker" class="date-picker"></div>
                 
                 <div class="macros-container" style="margin-top: 16px;">
                     <div class="macro-item">
@@ -372,7 +371,7 @@
     </div>
 
     <!-- Javascript -->
-    <script src="/static/app.js?v=13"></script>
+    <script src="/static/app.js?v=14"></script>
     <script>
         lucide.createIcons();
     </script>

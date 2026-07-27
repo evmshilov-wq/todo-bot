@@ -382,6 +382,16 @@ async def get_interactions(user_id: int, limit: int = 50):
         result = await session.scalars(query)
         return [{"id": i.id, "date_time": i.date_time, "person_name": i.person_name, "notes": i.notes} for i in result.all()]
 
+async def get_interactions_for_date(user_id: int, target_date: date):
+    async with async_session() as session:
+        date_str = target_date.strftime("%Y-%m-%d")
+        query = select(InteractionLog).where(
+            InteractionLog.user_id == user_id,
+            InteractionLog.date_time.startswith(date_str)
+        ).order_by(InteractionLog.id.desc())
+        result = await session.scalars(query)
+        return [{"id": i.id, "date_time": i.date_time, "person_name": i.person_name, "notes": i.notes} for i in result.all()]
+
 async def delete_interaction(user_id: int, log_id: int):
     async with async_session() as session:
         await session.execute(delete(InteractionLog).where(InteractionLog.id == log_id, InteractionLog.user_id == user_id))
