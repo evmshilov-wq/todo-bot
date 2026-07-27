@@ -283,7 +283,7 @@ async def process_chat_voice(file_path: str, chat_history: list, current_tasks: 
         for attempt in range(3):
             try:
                 transcribe_resp = client.models.generate_content(
-                    model="gemini-1.5-flash", 
+                    model="gemini-2.5-flash", 
                     contents=[
                         genai_types.Part.from_uri(file_uri=uploaded_file.uri, mime_type=uploaded_file.mime_type),
                         "Точно распознай текст из этого аудиосообщения. Напиши ТОЛЬКО распознанный текст без каких-либо комментариев."
