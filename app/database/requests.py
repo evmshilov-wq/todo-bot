@@ -154,6 +154,17 @@ async def get_tasks_for_today(user_id: int):
     today_date = datetime.now(ZoneInfo(tz_name)).date()
     return await get_tasks_for_date(user_id, today_date)
 
+async def get_all_incomplete_tasks(user_id: int):
+    async with async_session() as session:
+        query = select(Task, Category).outerjoin(Category, Task.category_id == Category.id).where(
+            Task.user_id == user_id,
+            Task.is_completed == 0
+        ).order_by(Task.priority.asc(), Task.date_time.asc())
+        
+        result = await session.execute(query)
+        rows = result.all()
+        return [{"id": t.id, "text": t.text, "date_time": t.date_time, "is_timeless": t.is_timeless, "category": c.name if c else None, "priority": t.priority} for t, c in rows]
+
 async def get_completed_tasks_for_today(user_id: int):
     tz_name = await get_user_timezone(user_id)
     date_str = datetime.now(ZoneInfo(tz_name)).strftime("%Y-%m-%d")

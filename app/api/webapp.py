@@ -256,6 +256,27 @@ async def api_get_analytics(request: web.Request):
     digest = await generate_ai_digest(stats, "Пользователь")
     return web.json_response({"stats": stats, "digest": digest})
 
+@routes.delete("/api/tasks/{task_id}")
+async def api_delete_task(request: web.Request):
+    user_id = get_user_id(request)
+    if not user_id: return web.json_response({"error": "Unauthorized"}, status=401)
+    task_id = int(request.match_info["task_id"])
+    from app.database.requests import delete_task_db
+    await delete_task_db(user_id, task_id)
+    return web.json_response({"status": "ok"})
+
+@routes.put("/api/tasks/{task_id}")
+async def api_edit_task(request: web.Request):
+    user_id = get_user_id(request)
+    if not user_id: return web.json_response({"error": "Unauthorized"}, status=401)
+    task_id = int(request.match_info["task_id"])
+    data = await request.json()
+    new_text = data.get("text")
+    if not new_text: return web.json_response({"error": "Text required"}, status=400)
+    from app.database.requests import update_task_text_db
+    await update_task_text_db(user_id, task_id, new_text)
+    return web.json_response({"status": "ok"})
+
 @routes.post("/api/tasks/{task_id}/complete")
 async def api_complete_task(request: web.Request):
     user_id = get_user_id(request)
@@ -469,9 +490,8 @@ async def api_ai_text(request: web.Request):
     chat_history = await get_chat_history(user_id, limit=20)
     memories = await get_memories(user_id)
     notes = await get_notes(user_id)
-    today_tasks = await get_tasks_for_today(user_id)
-    nodate_tasks = await get_tasks_without_date(user_id)
-    current_tasks = today_tasks + nodate_tasks
+    from app.database.requests import get_all_incomplete_tasks
+    current_tasks = await get_all_incomplete_tasks(user_id)
     
     # 2. Save User Message
     await add_chat_message(user_id, "user", text)
@@ -753,9 +773,8 @@ async def api_ai_voice(request: web.Request):
     chat_history = await get_chat_history(user_id, limit=20)
     memories = await get_memories(user_id)
     notes = await get_notes(user_id)
-    today_tasks = await get_tasks_for_today(user_id)
-    nodate_tasks = await get_tasks_without_date(user_id)
-    current_tasks = today_tasks + nodate_tasks
+    from app.database.requests import get_all_incomplete_tasks
+    current_tasks = await get_all_incomplete_tasks(user_id)
     
     # 2.5 Fetch Profile
     user_profile = await get_user_profile(user_id)

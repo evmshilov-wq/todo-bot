@@ -351,6 +351,10 @@ function renderTasks(tasks) {
                     ${t.date_time && !t.is_timeless ? `<span class="task-tag">${t.date_time.split(' ')[1]}</span>` : ''}
                 </div>
             </div>
+            <div class="task-actions">
+                <button class="task-action-btn" onclick="editTask(${t.id}, '${t.text.replace(/'/g, "\\'")}')">✏️</button>
+                <button class="task-action-btn" onclick="deleteTask(${t.id})">🗑️</button>
+            </div>
         </div>
     `).join('');
 }
@@ -358,6 +362,31 @@ function renderTasks(tasks) {
 async function completeTask(id) {
     try {
         await fetch(`/api/tasks/${id}/complete`, { method: 'POST', headers });
+        fetchTasks();
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+async function editTask(id, currentText) {
+    const newText = prompt("Отредактируйте задачу:", currentText);
+    if (!newText || newText === currentText) return;
+    try {
+        await fetch(`/api/tasks/${id}`, {
+            method: 'PUT',
+            headers,
+            body: JSON.stringify({ text: newText })
+        });
+        fetchTasks();
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+async function deleteTask(id) {
+    if (!confirm("Удалить эту задачу?")) return;
+    try {
+        await fetch(`/api/tasks/${id}`, { method: 'DELETE', headers });
         fetchTasks();
     } catch (e) {
         console.error(e);
