@@ -105,16 +105,23 @@ class AIChatResponseModel(BaseModel):
 
 import math
 
+import time
 def get_embedding(text_content: str) -> list[float]:
-    try:
-        response = client.models.embed_content(
-            model="text-embedding-004", 
-            contents=text_content
-        )
-        return response.embeddings[0].values
-    except Exception as e:
-        logging.error(f"Embedding error: {e}")
-        return []
+    for attempt in range(3):
+        try:
+            response = client.models.embed_content(
+                model="models/embedding-001", 
+                contents=text_content
+            )
+            return response.embeddings[0].values
+        except Exception as e:
+            if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+                if attempt < 2:
+                    time.sleep(2)
+                    continue
+            logging.error(f"Embedding error: {e}")
+            return []
+    return []
 
 def cosine_similarity(v1: list[float], v2: list[float]) -> float:
     if not v1 or not v2: return 0.0
@@ -246,34 +253,50 @@ async def process_chat_message(user_text: str, chat_history: list, current_tasks
     parts.append(genai_types.Part.from_text(text=user_text))
     contents.append(genai_types.Content(role="user", parts=parts))
     
-    try:
-        response = client.models.generate_content(
-            model=AI_MODEL, 
-            contents=contents,
-            config=genai_types.GenerateContentConfig(
-                system_instruction=system_prompt,
-                response_mime_type='application/json', 
-                response_schema=AIChatResponseModel
+    import asyncio
+    for attempt in range(3):
+        try:
+            response = client.models.generate_content(
+                model=AI_MODEL, 
+                contents=contents,
+                config=genai_types.GenerateContentConfig(
+                    system_instruction=system_prompt,
+                    response_mime_type='application/json', 
+                    response_schema=AIChatResponseModel
+                )
             )
-        )
-        return json.loads(response.text.strip())
-    except Exception as e:
-        logging.error(f"Ошибка AI Chat: {e}")
-        return {"reply": "Прости, я немного задумался и потерял мысль (ошибка сети). Повтори, пожалуйста?", "tasks": [], "memories": []}
+            return json.loads(response.text.strip())
+        except Exception as e:
+            if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+                if attempt < 2:
+                    await asyncio.sleep(4)
+                    continue
+            logging.error(f"Ошибка AI Chat: {e}")
+            return {"reply": "Прости, я немного задумался и потерял мысль (ошибка сети). Повтори, пожалуйста?", "tasks": [], "memories": []}
 
 async def process_chat_voice(file_path: str, chat_history: list, current_tasks: list, memories: list, notes: list, available_categories: list, user_tz: str, user_text: str = "", user_profile: dict = None) -> dict:
     try:
         uploaded_file = client.files.upload(file=file_path)
         
-        # Step 1: Transcribe the audio
-        transcribe_resp = client.models.generate_content(
-            model="gemini-2.5-flash-lite", 
-            contents=[
-                genai_types.Part.from_uri(file_uri=uploaded_file.uri, mime_type=uploaded_file.mime_type),
-                "Точно распознай текст из этого аудиосообщения. Напиши ТОЛЬКО распознанный текст без каких-либо комментариев."
-            ]
-        )
-        transcribed_text = transcribe_resp.text.strip()
+        import asyncio
+        transcribed_text = ""
+        for attempt in range(3):
+            try:
+                transcribe_resp = client.models.generate_content(
+                    model="gemini-2.5-flash-lite", 
+                    contents=[
+                        genai_types.Part.from_uri(file_uri=uploaded_file.uri, mime_type=uploaded_file.mime_type),
+                        "Точно распознай текст из этого аудиосообщения. Напиши ТОЛЬКО распознанный текст без каких-либо комментариев."
+                    ]
+                )
+                transcribed_text = transcribe_resp.text.strip()
+                break
+            except Exception as e:
+                if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+                    if attempt < 2:
+                        await asyncio.sleep(4)
+                        continue
+                raise e
         
         # Step 2: Fetch Semantic Context using the transcribed text
         rel_mem, rel_notes = fetch_relevant_context(transcribed_text, memories, notes)
@@ -285,22 +308,27 @@ async def process_chat_voice(file_path: str, chat_history: list, current_tasks: 
         contents.append(genai_types.Content(role="user", parts=[genai_types.Part.from_text(text=transcribed_text)]))
         
         # Step 3: Generate the actual response
-        response = client.models.generate_content(
-            model=AI_MODEL, 
-            contents=contents,
-            config=genai_types.GenerateContentConfig(
-                system_instruction=system_prompt,
-                response_mime_type='application/json', 
-                response_schema=AIChatResponseModel
-            )
-        )
-        client.files.delete(name=uploaded_file.name)
-        
-        ai_resp = json.loads(response.text.strip())
-        # To help the backend save the correct user message to DB, we can optionally pass it back.
-        # For now, we will add 'transcribed_text' to the returned dict so `webapp.py` can save it!
-        ai_resp["transcribed_text"] = transcribed_text
-        return ai_resp
+        for attempt in range(3):
+            try:
+                response = client.models.generate_content(
+                    model=AI_MODEL, 
+                    contents=contents,
+                    config=genai_types.GenerateContentConfig(
+                        system_instruction=system_prompt,
+                        response_mime_type='application/json', 
+                        response_schema=AIChatResponseModel
+                    )
+                )
+                client.files.delete(name=uploaded_file.name)
+                ai_resp = json.loads(response.text.strip())
+                ai_resp["transcribed_text"] = transcribed_text
+                return ai_resp
+            except Exception as e:
+                if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+                    if attempt < 2:
+                        await asyncio.sleep(4)
+                        continue
+                raise e
     except Exception as e:
         logging.error(f"Ошибка AI Voice Chat: {e}")
         return {"reply": "Прости, я не смог разобрать голосовое. Можешь повторить?", "tasks": [], "memories": []}
@@ -323,9 +351,16 @@ async def generate_ai_digest(stats: dict, user_name: str, custom_prompt: str = N
 2. На чем лучше сосредоточиться прямо сейчас (исходя из приоритетов A/B/C).
 3. Короткая мотивационная фраза в конце.
 Пиши без Markdown-разметки (без звездочек и решеток), просто чистый текст."""
-    try:
-        response = client.models.generate_content(model=AI_MODEL, contents=prompt)
-        return response.text.strip().replace("*", "").replace("_", "").replace("#", "")
-    except Exception as e:
-        if "429" in str(e): return "⚠️ Ошибка: Превышен лимит запросов к ИИ."
-        return f"⚠️ Ошибка отчета: {e}"
+    import asyncio
+    for attempt in range(3):
+        try:
+            response = client.models.generate_content(model=AI_MODEL, contents=prompt)
+            return response.text.strip().replace("*", "").replace("_", "").replace("#", "")
+        except Exception as e:
+            if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+                if attempt < 2:
+                    await asyncio.sleep(4)
+                    continue
+                return "⚠️ Ошибка: Превышен лимит запросов к ИИ."
+            return f"⚠️ Ошибка отчета: {e}"
+    return "⚠️ Ошибка: Превышен лимит запросов к ИИ."
