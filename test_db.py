@@ -1,16 +1,8 @@
-import sqlite3
-import json
+import asyncio
+from app.database.engine import init_db
 
-conn = sqlite3.connect('todo_bot.db')
-c = conn.cursor()
-try:
-    c.execute("SELECT * FROM hobby_logs")
-    print("Hobby logs:", c.fetchall())
-except Exception as e:
-    print("Error hobby:", e)
+async def run():
+    await init_db()
+    print("Database initialized.")
 
-try:
-    c.execute("SELECT * FROM interaction_logs")
-    print("Interaction logs:", c.fetchall())
-except Exception as e:
-    print("Error interaction:", e)
+asyncio.run(run())

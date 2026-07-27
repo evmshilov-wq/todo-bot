@@ -58,6 +58,17 @@ async def update_google_token(telegram_id: int, token_json: str | None):
         await session.execute(update(User).where(User.telegram_id == telegram_id).values(google_token=token_json))
         await session.commit()
 
+
+async def add_xp_to_user(user_id: int, amount: int):
+    async with async_session() as session:
+        user = await session.scalar(select(User).where(User.telegram_id == user_id))
+        if user:
+            user.xp += amount
+            if user.xp < 0:
+                user.xp = 0
+            user.level = (user.xp // 100) + 1
+            await session.commit()
+
 async def get_user_categories(telegram_id: int):
     async with async_session() as session:
         cats = await session.scalars(select(Category).where(Category.user_id == telegram_id))
@@ -91,6 +102,7 @@ async def add_task(user_id: int, text: str, category_id: int = None, date_time: 
         task = Task(user_id=user_id, text=text, category_id=category_id, date_time=date_time, is_timeless=is_timeless, is_recurring=is_recurring, recurrence_rule=recurrence_rule, end_time=end_time, google_event_id=google_event_id, priority=priority, sphere=sphere)
         session.add(task)
         await session.commit()
+        await add_xp_to_user(user_id, 5)
 
 async def get_task_by_id(user_id: int, task_id: int):
     async with async_session() as session:
@@ -121,8 +133,7 @@ async def complete_task_db(user_id: int, task_id: int):
         if task:
             user = await session.scalar(select(User).where(User.telegram_id == task.user_id))
             if user:
-                user.xp += 10
-                user.level = (user.xp // 100) + 1
+                await add_xp_to_user(task.user_id, 15)
         await session.commit()
 
 async def get_tasks_for_date(user_id: int, target_date: date):
@@ -192,7 +203,24 @@ async def get_stats_for_digest(user_id: int, days: int) -> dict:
         )
         pending = [{"text": t.text, "category": c or "Без категории", "date_time": t.date_time, "priority": t.priority} for t, c in (await session.execute(pend_query)).all()]
         
-    return {"completed": completed, "pending": pending, "period_days": days}
+        habits = await session.scalars(select(Habit).where(Habit.user_id == user_id))
+        habits_data = [{"name": h.name, "completed_today": h.last_completed_date == start_date} for h in habits]
+        
+        workouts = (await session.scalars(select(Workout).where(Workout.user_id == user_id, Workout.date_time.startswith(start_date)))).all()
+        nutrition = (await session.scalars(select(NutritionLog).where(NutritionLog.user_id == user_id, NutritionLog.date_time.startswith(start_date)))).all()
+        health = (await session.scalars(select(HealthLog).where(HealthLog.user_id == user_id, HealthLog.date_time.startswith(start_date)))).all()
+        hobbies = (await session.scalars(select(HobbyLog).where(HobbyLog.user_id == user_id, HobbyLog.date_time.startswith(start_date)))).all()
+        
+    return {
+        "completed": completed, 
+        "pending": pending, 
+        "period_days": days,
+        "habits": habits_data,
+        "workouts": [{"exercise": w.exercise} for w in workouts],
+        "nutrition": [{"food": n.food_name} for n in nutrition],
+        "health": [{"sleep": h.sleep_hours} for h in health],
+        "hobbies": [{"hobby": hb.hobby_name} for hb in hobbies]
+    }
 
 async def get_user_stats(user_id: int):
     async with async_session() as session:
@@ -402,6 +430,7 @@ async def add_hobby_log(user_id: int, date_time: str, hobby_name: str, duration_
     async with async_session() as session:
         session.add(HobbyLog(user_id=user_id, date_time=date_time, hobby_name=hobby_name, duration_minutes=duration_minutes, notes=notes))
         await session.commit()
+        await add_xp_to_user(user_id, 10)
 
 async def get_hobby_logs_for_date(user_id: int, target_date: date):
     async with async_session() as session:
@@ -431,6 +460,7 @@ async def add_health_log(user_id: int, date_time: str, sleep_hours: float = 0, w
     async with async_session() as session:
         session.add(HealthLog(user_id=user_id, date_time=date_time, sleep_hours=sleep_hours, water_ml=water_ml, energy_level=energy_level, notes=notes))
         await session.commit()
+        await add_xp_to_user(user_id, 10)
 
 async def get_health_logs_for_date(user_id: int, target_date: date):
     async with async_session() as session:

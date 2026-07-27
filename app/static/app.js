@@ -376,10 +376,21 @@ async function fetchNotes() {
 }
 
 async function fetchProfileStats() {
+    // We can also fetch the stats for other spheres if needed, 
+    // but the XP and level will be processed here.
     try {
         const res = await fetch('/api/stats', { headers });
         const data = await res.json();
-        els.statHealth.innerText = `Ур ${data.level || 1} | XP ${data.xp || 0}`;
+        
+        // Update XP Bar
+        const xp = data.xp || 0;
+        const level = data.level || 1;
+        const xpProgress = xp % 100; // Assuming 100 XP per level for simple math
+        
+        document.getElementById('user-level').innerText = level;
+        document.getElementById('user-xp').innerText = xp;
+        document.getElementById('xp-progress').style.width = `${xpProgress}%`;
+        
     } catch(e) {
         console.error(e);
     }
@@ -859,7 +870,9 @@ async function saveManualFinance() {
 
 async function initApp() {
     const user = tg.initDataUnsafe?.user;
-    if (user?.first_name) {
+    if (user?.photo_url) {
+        document.getElementById('header-profile-container').innerHTML = `<img src="${user.photo_url}" style="width: 100%; height: 100%; object-fit: cover;">`;
+    } else if (user?.first_name) {
         els.userName.innerText = user.first_name.charAt(0).toUpperCase();
     }
     
