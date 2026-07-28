@@ -907,6 +907,7 @@ async function fetchHobbies() {
         if (data.hobbies && data.hobbies.length > 0) {
             list.innerHTML = data.hobbies.map(h => {
                 totalTime += h.duration_minutes || 0;
+                return `
                 <div class="task-item">
                     <div class="task-circle" style="border-color: #AF52DE;"><i data-lucide="palette" style="width: 14px; height: 14px; color: #AF52DE;"></i></div>
                     <div class="task-content">
@@ -996,6 +997,7 @@ async function fetchHealth() {
             list.innerHTML = data.health.map(h => {
                 totalSleep += h.sleep_hours || 0;
                 totalWater += h.water_ml || 0;
+                return `
                 <div class="task-item">
                     <div class="task-circle" style="border-color: #FF9500;"><i data-lucide="activity" style="width: 14px; height: 14px; color: #FF9500;"></i></div>
                     <div class="task-content">
