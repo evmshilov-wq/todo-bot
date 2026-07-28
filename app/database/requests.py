@@ -129,12 +129,8 @@ async def delete_task_db(user_id: int, task_id: int):
 async def complete_task_db(user_id: int, task_id: int):
     async with async_session() as session:
         await session.execute(update(Task).where(Task.id == task_id, Task.user_id == user_id).values(is_completed=1))
-        task = await session.scalar(select(Task).where(Task.id == task_id, Task.user_id == user_id))
-        if task:
-            user = await session.scalar(select(User).where(User.telegram_id == task.user_id))
-            if user:
-                await add_xp_to_user(task.user_id, 15)
         await session.commit()
+    await add_xp_to_user(user_id, 15)
 
 async def get_tasks_for_date(user_id: int, target_date: date):
     date_str = target_date.strftime("%Y-%m-%d")
