@@ -624,3 +624,61 @@ async def get_activity_heatmap_data(user_id: int, year: int, month: int):
             if he: scores[he.split(' ')[0]] += 1
             
         return dict(scores)
+
+# --- Update Logs ---
+async def update_workout_db(user_id: int, log_id: int, data: dict):
+    async with async_session() as session:
+        log = await session.scalar(select(WorkoutLog).where(WorkoutLog.id == log_id, WorkoutLog.user_id == user_id))
+        if log:
+            if "exercise_name" in data: log.exercise_name = data["exercise_name"]
+            if "weight" in data: log.weight = data["weight"]
+            if "sets" in data: log.sets = data["sets"]
+            if "reps" in data: log.reps = data["reps"]
+            await session.commit()
+
+async def update_nutrition_db(user_id: int, log_id: int, data: dict):
+    async with async_session() as session:
+        log = await session.scalar(select(NutritionLog).where(NutritionLog.id == log_id, NutritionLog.user_id == user_id))
+        if log:
+            if "meal_name" in data: log.meal_name = data["meal_name"]
+            if "calories" in data: log.calories = data["calories"]
+            if "protein" in data: log.protein = data["protein"]
+            if "carbs" in data: log.carbs = data["carbs"]
+            if "fat" in data: log.fat = data["fat"]
+            await session.commit()
+
+async def update_health_db(user_id: int, log_id: int, data: dict):
+    async with async_session() as session:
+        log = await session.scalar(select(HealthLog).where(HealthLog.id == log_id, HealthLog.user_id == user_id))
+        if log:
+            if "sleep_hours" in data: log.sleep_hours = data["sleep_hours"]
+            if "water_ml" in data: log.water_ml = data["water_ml"]
+            if "energy_level" in data: log.energy_level = data["energy_level"]
+            if "notes" in data: log.notes = data["notes"]
+            await session.commit()
+
+async def update_interaction_db(user_id: int, log_id: int, data: dict):
+    async with async_session() as session:
+        log = await session.scalar(select(InteractionLog).where(InteractionLog.id == log_id, InteractionLog.user_id == user_id))
+        if log:
+            if "person_name" in data: log.person_name = data["person_name"]
+            if "notes" in data: log.notes = data["notes"]
+            await session.commit()
+
+async def update_hobby_db(user_id: int, log_id: int, data: dict):
+    async with async_session() as session:
+        log = await session.scalar(select(HobbyLog).where(HobbyLog.id == log_id, HobbyLog.user_id == user_id))
+        if log:
+            if "hobby_name" in data: log.hobby_name = data["hobby_name"]
+            if "duration_minutes" in data: log.duration_minutes = data["duration_minutes"]
+            if "notes" in data: log.notes = data["notes"]
+            await session.commit()
+
+async def update_finance_log(user_id: int, log_id: int, data: dict):
+    async with async_session() as session:
+        log = await session.scalar(select(FinanceLog).where(FinanceLog.id == log_id, FinanceLog.user_id == user_id))
+        if log:
+            if "amount" in data: log.amount = data["amount"]
+            if "category" in data: log.category = data["category"]
+            if "notes" in data: log.notes = data["notes"]
+            await session.commit()

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Life OS</title>
-    <link rel="stylesheet" href="/static/style.css?v=15">
+    <link rel="stylesheet" href="/static/style.css?v=2.6">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -37,6 +37,20 @@
 
         <!-- Main Dashboard: 7 Spheres -->
         <main id="view-dashboard" class="view-active">
+            <!-- Activity Heatmap Calendar -->
+            <div class="content-section" style="margin-bottom: 24px;">
+                <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <h3 id="heatmap-month-title" style="font-size: 16px;">Активность</h3>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="icon-btn" onclick="changeHeatmapMonth(-1)" style="padding: 4px; background: rgba(255,255,255,0.05); border-radius: 8px;"><i data-lucide="chevron-left" style="width: 16px; height: 16px;"></i></button>
+                        <button class="icon-btn" onclick="changeHeatmapMonth(1)" style="padding: 4px; background: rgba(255,255,255,0.05); border-radius: 8px;"><i data-lucide="chevron-right" style="width: 16px; height: 16px;"></i></button>
+                    </div>
+                </div>
+                <div id="heatmap-calendar" class="heatmap-grid">
+                    <!-- JS will populate -->
+                </div>
+            </div>
+
             <div class="spheres-grid">
                 
                 <!-- 1. Work -->
@@ -115,22 +129,6 @@
                         <p class="sphere-stat" id="stat-finance">Бюджет в норме</p>
                     </div>
                 </div>
-            </div>
-            </div>
-
-            <!-- Activity Heatmap Calendar -->
-            <div class="content-section" style="margin-top: 24px; margin-bottom: 24px;">
-                <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                    <h3 id="heatmap-month-title" style="font-size: 16px;">Активность</h3>
-                    <div style="display: flex; gap: 8px;">
-                        <button class="icon-btn" onclick="changeHeatmapMonth(-1)" style="padding: 4px; background: rgba(255,255,255,0.05); border-radius: 8px;"><i data-lucide="chevron-left" style="width: 16px; height: 16px;"></i></button>
-                        <button class="icon-btn" onclick="changeHeatmapMonth(1)" style="padding: 4px; background: rgba(255,255,255,0.05); border-radius: 8px;"><i data-lucide="chevron-right" style="width: 16px; height: 16px;"></i></button>
-                    </div>
-                </div>
-                <div id="heatmap-calendar" class="heatmap-grid">
-                    <!-- JS will populate -->
-                </div>
-            </div>
         </main>
 
         <!-- Detailed View: Work (Sphere 1 MVP) -->
@@ -521,8 +519,8 @@
 
     </div>
 
-    <!-- Javascript -->
-    <script src="/static/app.js?v=23"></script>
+    <!-- Core App Logic -->
+    <script src="/static/app.js?v=2.6"></script>
     <script>
         lucide.createIcons();
     </script>

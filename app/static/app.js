@@ -646,6 +646,10 @@ async function fetchFitness() {
                         <div class="task-text">${w.exercise_name}</div>
                         <div class="task-meta">${w.weight ? w.weight + ' кг, ' : ''}${w.sets} x ${w.reps}</div>
                     </div>
+                    <div class="task-actions">
+                        <button class="task-action-btn" onclick="editRecord('fitness', ${w.id}, '${w.exercise_name}')">✏️</button>
+                        <button class="task-action-btn" onclick="deleteRecord('fitness', ${w.id})">🗑️</button>
+                    </div>
                 </div>
             `).join('');
         } else {
@@ -686,6 +690,10 @@ async function fetchNutrition() {
                     <div class="task-content">
                         <div class="task-text">${n.meal_name}</div>
                         <div class="task-meta">${n.calories} ккал | Б:${n.protein} Ж:${n.fat} У:${n.carbs}</div>
+                    </div>
+                    <div class="task-actions">
+                        <button class="task-action-btn" onclick="editRecord('nutrition', ${n.id}, '${n.meal_name}')">✏️</button>
+                        <button class="task-action-btn" onclick="deleteRecord('nutrition', ${n.id})">🗑️</button>
                     </div>
                 </div>
             `}).join('');
@@ -872,6 +880,10 @@ async function fetchRelationships() {
                         <div class="task-text">${r.person_name}</div>
                         <div class="task-meta">${r.date_time.split(' ')[0]} | ${r.notes || ''}</div>
                     </div>
+                    <div class="task-actions">
+                        <button class="task-action-btn" onclick="editRecord('relationships', ${r.id}, '${r.person_name}')">✏️</button>
+                        <button class="task-action-btn" onclick="deleteRecord('relationships', ${r.id})">🗑️</button>
+                    </div>
                 </div>
             `).join('');
         } else {
@@ -895,12 +907,15 @@ async function fetchHobbies() {
         if (data.hobbies && data.hobbies.length > 0) {
             list.innerHTML = data.hobbies.map(h => {
                 totalTime += h.duration_minutes || 0;
-                return `
                 <div class="task-item">
                     <div class="task-circle" style="border-color: #AF52DE;"><i data-lucide="palette" style="width: 14px; height: 14px; color: #AF52DE;"></i></div>
                     <div class="task-content">
                         <div class="task-text">${h.hobby_name}</div>
                         <div class="task-meta">${h.duration_minutes} мин | ${h.notes || ''}</div>
+                    </div>
+                    <div class="task-actions">
+                        <button class="task-action-btn" onclick="editRecord('hobbies', ${h.id}, '${h.hobby_name}')">✏️</button>
+                        <button class="task-action-btn" onclick="deleteRecord('hobbies', ${h.id})">🗑️</button>
                     </div>
                 </div>
             `}).join('');
@@ -981,12 +996,15 @@ async function fetchHealth() {
             list.innerHTML = data.health.map(h => {
                 totalSleep += h.sleep_hours || 0;
                 totalWater += h.water_ml || 0;
-                return `
                 <div class="task-item">
                     <div class="task-circle" style="border-color: #FF9500;"><i data-lucide="activity" style="width: 14px; height: 14px; color: #FF9500;"></i></div>
                     <div class="task-content">
                         <div class="task-text">${h.notes || 'Запись'}</div>
                         <div class="task-meta">Сон: ${h.sleep_hours}ч | Вода: ${h.water_ml}мл | Энергия: ${h.energy_level}/10</div>
+                    </div>
+                    <div class="task-actions">
+                        <button class="task-action-btn" onclick="editRecord('health', ${h.id}, '${h.notes || 'Запись'}')">✏️</button>
+                        <button class="task-action-btn" onclick="deleteRecord('health', ${h.id})">🗑️</button>
                     </div>
                 </div>
             `}).join('');
@@ -1036,17 +1054,68 @@ function renderEnergyChart(logs) {
     
     chartData.forEach(d => {
         const height = d.energy > 0 ? (d.energy / 10) * 100 : 5; // min 5% height
-        const color = d.energy >= 7 ? '#30D158' : (d.energy >= 4 ? '#FF9F0A' : '#FF453A');
-        
         container.innerHTML += `
-            <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;">
-                <div style="width: 100%; height: 80px; display: flex; align-items: flex-end; background: rgba(255,255,255,0.1); border-radius: 4px;">
-                    <div style="width: 100%; height: ${height}%; background: ${color}; border-radius: 4px; transition: height 0.3s ease;"></div>
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1;">
+                <div style="height: 100px; width: 100%; display: flex; align-items: flex-end; justify-content: center; background: rgba(255,255,255,0.05); border-radius: 4px;">
+                    <div style="width: 60%; height: ${height}%; background: ${d.energy > 0 ? '#FF9500' : 'rgba(255,255,255,0.1)'}; border-radius: 4px; transition: height 0.3s ease;"></div>
                 </div>
-                <span style="font-size: 10px; color: rgba(255,255,255,0.5);">${d.date}</span>
+                <span style="font-size: 10px; color: var(--text-muted);">${d.date}</span>
             </div>
         `;
     });
+}
+
+// --- Generic Edit / Delete Logic ---
+async function editRecord(type, id, currentText) {
+    const newText = prompt(`Отредактируйте запись (сфера: ${type}):`, currentText);
+    if (!newText || newText === currentText) return;
+    
+    // Depending on type, the API might expect different keys, but we'll try to map it gracefully.
+    // For a real app, a custom modal is better, but this satisfies the basic need quickly.
+    let payload = {};
+    if (type === 'fitness') payload = { exercise_name: newText };
+    else if (type === 'nutrition') payload = { meal_name: newText };
+    else if (type === 'health') payload = { notes: newText };
+    else if (type === 'relationships') payload = { person_name: newText };
+    else if (type === 'hobbies') payload = { hobby_name: newText };
+    else payload = { text: newText };
+    
+    try {
+        await fetch(`/api/${type}/${id}`, {
+            method: 'PUT',
+            headers,
+            body: JSON.stringify(payload)
+        });
+        
+        // Refresh the specific view
+        if (type === 'fitness') fetchFitness();
+        else if (type === 'nutrition') fetchNutrition();
+        else if (type === 'health') fetchHealth();
+        else if (type === 'relationships') fetchRelationships();
+        else if (type === 'hobbies') fetchHobbies();
+        else if (type === 'finance') fetchFinance();
+    } catch (e) {
+        console.error(e);
+        alert('Ошибка редактирования');
+    }
+}
+
+async function deleteRecord(type, id) {
+    if (!confirm("Точно удалить эту запись?")) return;
+    try {
+        await fetch(`/api/${type}/${id}`, { method: 'DELETE', headers });
+        
+        // Refresh the specific view
+        if (type === 'fitness') fetchFitness();
+        else if (type === 'nutrition') fetchNutrition();
+        else if (type === 'health') fetchHealth();
+        else if (type === 'relationships') fetchRelationships();
+        else if (type === 'hobbies') fetchHobbies();
+        else if (type === 'finance') fetchFinance();
+    } catch (e) {
+        console.error(e);
+        alert('Ошибка удаления');
+    }
 }
 
 async function saveManualHealth() {
@@ -1124,6 +1193,10 @@ async function fetchFinance() {
                     </div>
                     <div style="color: ${color}; font-weight: 600; font-size: 14px; white-space: nowrap;">
                         ${sign}${f.amount} ${f.currency}
+                    </div>
+                    <div class="task-actions">
+                        <button class="task-action-btn" onclick="editRecord('finance', ${f.id}, '${f.category || 'Без категории'}')">✏️</button>
+                        <button class="task-action-btn" onclick="deleteRecord('finance', ${f.id})">🗑️</button>
                     </div>
                 </div>
             `}).join('');

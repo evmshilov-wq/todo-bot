@@ -297,6 +297,7 @@ async def api_complete_task(request: web.Request):
     user_id = get_user_id(request)
     if not user_id: return web.json_response({"error": "Unauthorized"}, status=401)
     task_id = int(request.match_info["task_id"])
+    from app.database.requests import complete_task_db
     await complete_task_db(user_id, task_id)
     return web.json_response({"status": "ok", "xp_earned": 10})
 
@@ -1154,3 +1155,115 @@ async def api_auth_google_callback(request: web.Request):
     except Exception as e:
         return web.Response(text=f"Auth error: {str(e)}", status=400)
 
+# --- GLOBAL CRUD FOR ALL SPHERES ---
+from app.database.requests import (
+    update_workout_db, delete_workout_db,
+    update_nutrition_db, delete_nutrition_db,
+    update_health_db, delete_health_db,
+    update_interaction_db, delete_interaction,
+    update_hobby_db, delete_hobby_log
+)
+
+@routes.put("/api/fitness/{log_id}")
+async def api_edit_fitness(request: web.Request):
+    user_id = get_user_id(request)
+    if not user_id: return web.json_response({"error": "Unauthorized"}, status=401)
+    log_id = int(request.match_info["log_id"])
+    data = await request.json()
+    await update_workout_db(user_id, log_id, data)
+    return web.json_response({"status": "ok"})
+
+@routes.delete("/api/fitness/{log_id}")
+async def api_del_fitness(request: web.Request):
+    user_id = get_user_id(request)
+    if not user_id: return web.json_response({"error": "Unauthorized"}, status=401)
+    log_id = int(request.match_info["log_id"])
+    await delete_workout_db(user_id, log_id)
+    return web.json_response({"status": "ok"})
+
+@routes.put("/api/nutrition/{log_id}")
+async def api_edit_nutrition(request: web.Request):
+    user_id = get_user_id(request)
+    if not user_id: return web.json_response({"error": "Unauthorized"}, status=401)
+    log_id = int(request.match_info["log_id"])
+    data = await request.json()
+    await update_nutrition_db(user_id, log_id, data)
+    return web.json_response({"status": "ok"})
+
+@routes.delete("/api/nutrition/{log_id}")
+async def api_del_nutrition(request: web.Request):
+    user_id = get_user_id(request)
+    if not user_id: return web.json_response({"error": "Unauthorized"}, status=401)
+    log_id = int(request.match_info["log_id"])
+    await delete_nutrition_db(user_id, log_id)
+    return web.json_response({"status": "ok"})
+
+@routes.put("/api/health/{log_id}")
+async def api_edit_health(request: web.Request):
+    user_id = get_user_id(request)
+    if not user_id: return web.json_response({"error": "Unauthorized"}, status=401)
+    log_id = int(request.match_info["log_id"])
+    data = await request.json()
+    await update_health_db(user_id, log_id, data)
+    return web.json_response({"status": "ok"})
+
+@routes.delete("/api/health/{log_id}")
+async def api_del_health(request: web.Request):
+    user_id = get_user_id(request)
+    if not user_id: return web.json_response({"error": "Unauthorized"}, status=401)
+    log_id = int(request.match_info["log_id"])
+    await delete_health_db(user_id, log_id)
+    return web.json_response({"status": "ok"})
+
+@routes.put("/api/relationships/{log_id}")
+async def api_edit_rel(request: web.Request):
+    user_id = get_user_id(request)
+    if not user_id: return web.json_response({"error": "Unauthorized"}, status=401)
+    log_id = int(request.match_info["log_id"])
+    data = await request.json()
+    await update_interaction_db(user_id, log_id, data)
+    return web.json_response({"status": "ok"})
+
+@routes.delete("/api/relationships/{log_id}")
+async def api_del_rel(request: web.Request):
+    user_id = get_user_id(request)
+    if not user_id: return web.json_response({"error": "Unauthorized"}, status=401)
+    log_id = int(request.match_info["log_id"])
+    await delete_interaction(user_id, log_id)
+    return web.json_response({"status": "ok"})
+
+@routes.put("/api/hobbies/{log_id}")
+async def api_edit_hobby(request: web.Request):
+    user_id = get_user_id(request)
+    if not user_id: return web.json_response({"error": "Unauthorized"}, status=401)
+    log_id = int(request.match_info["log_id"])
+    data = await request.json()
+    await update_hobby_db(user_id, log_id, data)
+    return web.json_response({"status": "ok"})
+
+@routes.delete("/api/hobbies/{log_id}")
+async def api_del_hobby(request: web.Request):
+    user_id = get_user_id(request)
+    if not user_id: return web.json_response({"error": "Unauthorized"}, status=401)
+    log_id = int(request.match_info["log_id"])
+    await delete_hobby_log(user_id, log_id)
+    return web.json_response({"status": "ok"})
+
+@routes.put("/api/finance/{log_id}")
+async def api_edit_finance(request: web.Request):
+    user_id = get_user_id(request)
+    if not user_id: return web.json_response({"error": "Unauthorized"}, status=401)
+    log_id = int(request.match_info["log_id"])
+    data = await request.json()
+    from app.database.requests import update_finance_log
+    await update_finance_log(user_id, log_id, data)
+    return web.json_response({"status": "ok"})
+
+@routes.delete("/api/finance/{log_id}")
+async def api_del_finance(request: web.Request):
+    user_id = get_user_id(request)
+    if not user_id: return web.json_response({"error": "Unauthorized"}, status=401)
+    log_id = int(request.match_info["log_id"])
+    from app.database.requests import delete_finance_log
+    await delete_finance_log(user_id, log_id)
+    return web.json_response({"status": "ok"})
