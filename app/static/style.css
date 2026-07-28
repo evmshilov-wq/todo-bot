@@ -7,6 +7,7 @@
     --primary: #ffffff;
     --primary-bg: #1a1a1a;
     --accent: #0A84FF;
+    --heatmap-base: 255, 255, 255;
 }
 
 [data-theme="light"] {
@@ -17,6 +18,7 @@
     --card-bg: #f9f9f9;
     --primary: #000000;
     --primary-bg: #f2f2f2;
+    --heatmap-base: 0, 0, 0;
 }
 
 * {
@@ -268,13 +270,13 @@ body {
     transition: all 0.3s ease;
 }
 .heatmap-cell.has-date {
-    color: rgba(255, 255, 255, 0.3);
+    color: rgba(var(--heatmap-base), 0.3);
 }
-.heatmap-cell[data-score="1"] { background-color: rgba(255, 255, 255, 0.2); color: rgba(0,0,0,0.5); }
-.heatmap-cell[data-score="2"] { background-color: rgba(255, 255, 255, 0.4); color: rgba(0,0,0,0.7); }
-.heatmap-cell[data-score="3"] { background-color: rgba(255, 255, 255, 0.6); color: rgba(0,0,0,0.8); }
-.heatmap-cell[data-score="4"] { background-color: rgba(255, 255, 255, 0.8); color: #000; font-weight: bold; }
-.heatmap-cell[data-score="5"] { background-color: rgba(255, 255, 255, 1.0); color: #000; font-weight: bold; box-shadow: 0 0 10px rgba(255,255,255,0.5); }
+.heatmap-cell[data-score="1"] { background-color: rgba(var(--heatmap-base), 0.2); color: var(--bg-color); }
+.heatmap-cell[data-score="2"] { background-color: rgba(var(--heatmap-base), 0.4); color: var(--bg-color); }
+.heatmap-cell[data-score="3"] { background-color: rgba(var(--heatmap-base), 0.6); color: var(--bg-color); }
+.heatmap-cell[data-score="4"] { background-color: rgba(var(--heatmap-base), 0.8); color: var(--bg-color); font-weight: bold; }
+.heatmap-cell[data-score="5"] { background-color: rgba(var(--heatmap-base), 1.0); color: var(--bg-color); font-weight: bold; box-shadow: 0 0 10px rgba(var(--heatmap-base), 0.5); }
 
 /* Macro Summary Bar */
 .macro-summary {
