@@ -1159,7 +1159,7 @@ async def api_auth_google_callback(request: web.Request):
 from app.database.requests import (
     update_workout_db, delete_workout_db,
     update_nutrition_db, delete_nutrition_db,
-    update_health_db, delete_health_db,
+    update_health_db, delete_health_log,
     update_interaction_db, delete_interaction,
     update_hobby_db, delete_hobby_log
 )
@@ -1212,7 +1212,7 @@ async def api_del_health(request: web.Request):
     user_id = get_user_id(request)
     if not user_id: return web.json_response({"error": "Unauthorized"}, status=401)
     log_id = int(request.match_info["log_id"])
-    await delete_health_db(user_id, log_id)
+    await delete_health_log(user_id, log_id)
     return web.json_response({"status": "ok"})
 
 @routes.put("/api/relationships/{log_id}")
