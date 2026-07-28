@@ -647,7 +647,7 @@ async function fetchFitness() {
         const list = document.getElementById('fitness-list');
         if (data.workouts && data.workouts.length > 0) {
             list.innerHTML = data.workouts.map(w => `
-                <div class="task-item">
+                <div class="task-item task-item-simple">
                     <div class="task-circle" style="border-color: var(--accent);"><i data-lucide="dumbbell" style="width: 14px; height: 14px; color: var(--accent);"></i></div>
                     <div class="task-content">
                         <div class="task-text">${w.exercise_name}</div>
@@ -692,7 +692,7 @@ async function fetchNutrition() {
                 totalF += n.fat || 0;
                 totalC += n.carbs || 0;
                 return `
-                <div class="task-item">
+                <div class="task-item task-item-simple">
                     <div class="task-circle" style="border-color: #34C759;"><i data-lucide="utensils" style="width: 14px; height: 14px; color: #34C759;"></i></div>
                     <div class="task-content">
                         <div class="task-text">${n.meal_name}</div>
@@ -759,7 +759,13 @@ function renderNutritionPieChart(p, f, c) {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: { display: false },
+                    legend: { 
+                        display: true,
+                        position: 'bottom',
+                        labels: {
+                            color: document.documentElement.getAttribute('data-theme') === 'light' ? '#000' : '#fff'
+                        }
+                    },
                     tooltip: {
                         callbacks: {
                             label: function(context) {
@@ -988,7 +994,7 @@ async function fetchRelationships() {
         
         if (data.relationships && data.relationships.length > 0) {
             list.innerHTML = data.relationships.map(r => `
-                <div class="task-item">
+                <div class="task-item task-item-simple">
                     <div class="task-circle" style="border-color: #FF2D55;"><i data-lucide="users" style="width: 14px; height: 14px; color: #FF2D55;"></i></div>
                     <div class="task-content">
                         <div class="task-text">${r.person_name}</div>
@@ -1022,7 +1028,7 @@ async function fetchHobbies() {
             list.innerHTML = data.hobbies.map(h => {
                 totalTime += h.duration_minutes || 0;
                 return `
-                <div class="task-item">
+                <div class="task-item task-item-simple">
                     <div class="task-circle" style="border-color: #AF52DE;"><i data-lucide="palette" style="width: 14px; height: 14px; color: #AF52DE;"></i></div>
                     <div class="task-content">
                         <div class="task-text">${h.hobby_name}</div>
@@ -1112,7 +1118,7 @@ async function fetchHealth() {
                 totalSleep += h.sleep_hours || 0;
                 totalWater += h.water_ml || 0;
                 return `
-                <div class="task-item">
+                <div class="task-item task-item-simple">
                     <div class="task-circle" style="border-color: #FF9500;"><i data-lucide="activity" style="width: 14px; height: 14px; color: #FF9500;"></i></div>
                     <div class="task-content">
                         <div class="task-text">${h.notes || 'Запись'}</div>
@@ -1301,7 +1307,7 @@ async function fetchFinance() {
                 const sign = isIncome ? '+' : '-';
                 
                 return `
-                <div class="task-item">
+                <div class="task-item task-item-simple">
                     <div class="task-circle" style="border-color: ${color};"><i data-lucide="dollar-sign" style="width: 14px; height: 14px; color: ${color};"></i></div>
                     <div class="task-content">
                         <div class="task-text">${f.category || 'Без категории'}</div>

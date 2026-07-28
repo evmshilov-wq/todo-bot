@@ -388,6 +388,13 @@ body {
     margin-bottom: 8px;
 }
 
+.task-item-simple {
+    padding: 16px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
 .task-swipe-bg {
     position: absolute;
     top: 0;
