@@ -401,6 +401,32 @@ body {
     flex: 1;
 }
 
+.task-actions {
+    display: flex;
+    gap: 8px;
+    margin-left: auto;
+}
+
+.task-action-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: none;
+    border-radius: 8px;
+    padding: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-color);
+    transition: background 0.2s;
+}
+
+.task-action-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+    flex: 1;
+}
+
 .task-text {
     font-size: 15px;
     line-height: 1.4;
