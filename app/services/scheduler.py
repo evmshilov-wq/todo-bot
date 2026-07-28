@@ -78,7 +78,18 @@ async def process_notifications():
                 stats["missing_spheres"] = missing_spheres
                 stats["missed_habits"] = missed_habits
                 
-                prompt = "Подведи вечерние итоги дня. Похвали за выполненное. Спроси про самочувствие. Если в stats есть missing_spheres, мягко спроси, почему они пустые и предложи их заполнить сейчас (например: 'Я заметил, что ты ничего не записал про сон и еду. Как ты спал? Что кушал?'). Если есть missed_habits, скажи, что за них снято немного опыта. Будь эмпатичен."
+                # Fetch recent trends for AI proactivity
+                from app.database.requests import get_health_logs_for_period, get_nutrition_for_period
+                from datetime import timedelta
+                start_d = (now_user - timedelta(days=3)).date()
+                end_d = now_user.date()
+                recent_health = await get_health_logs_for_period(user.telegram_id, start_d, end_d)
+                recent_nutrition = await get_nutrition_for_period(user.telegram_id, days=3)
+                
+                stats["recent_3days_health"] = recent_health
+                stats["recent_3days_nutrition"] = recent_nutrition
+                
+                prompt = "Подведи вечерние итоги дня. Похвали за выполненное. Спроси про самочувствие. Если в stats есть missing_spheres, мягко спроси, почему они пустые. Проанализируй recent_3days_health и recent_3days_nutrition: если видишь недосып (<6 часов) или очень мало белка, прояви заботу и дай рекомендацию (например, 'ложись спать пораньше, ты мало спишь последние дни'). Будь эмпатичен."
                 digest = await generate_ai_digest(stats, "Пользователь", custom_prompt=prompt)
                 await bot_instance.send_message(user.telegram_id, f"🌙 Итоги дня:\n\n{digest}")
             except Exception as e:

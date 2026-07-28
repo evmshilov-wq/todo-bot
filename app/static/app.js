@@ -435,18 +435,25 @@ function renderTasks(tasks) {
     }
     
     els.tasksList.innerHTML = tasks.map(t => `
-        <div class="task-item">
-            <div class="task-checkbox" onclick="completeTask(${t.id})"></div>
-            <div class="task-content">
-                <div class="task-text">${t.text}</div>
-                <div class="task-meta">
-                    ${t.priority ? `<span class="task-tag">Пр: ${t.priority}</span>` : ''}
-                    ${t.date_time && !t.is_timeless ? `<span class="task-tag">${t.date_time.split(' ')[1]}</span>` : ''}
+        <div class="task-item" data-id="${t.id}" data-type="task">
+            <div class="task-swipe-bg task-swipe-right">✅</div>
+            <div class="task-swipe-bg task-swipe-left">🗑️</div>
+            <div class="task-item-content" 
+                 ontouchstart="handleSwipeStart(event)" 
+                 ontouchmove="handleSwipeMove(event)" 
+                 ontouchend="handleSwipeEnd(event, ${t.id}, 'task')">
+                <div class="task-checkbox" onclick="completeTask(${t.id})"></div>
+                <div class="task-content">
+                    <div class="task-text">${t.text}</div>
+                    <div class="task-meta">
+                        ${t.priority ? `<span class="task-tag">Пр: ${t.priority}</span>` : ''}
+                        ${t.date_time && !t.is_timeless ? `<span class="task-tag">${t.date_time.split(' ')[1]}</span>` : ''}
+                    </div>
                 </div>
-            </div>
-            <div class="task-actions">
-                <button class="task-action-btn" onclick="editTask(${t.id}, '${t.text.replace(/'/g, "\\'")}')">✏️</button>
-                <button class="task-action-btn" onclick="deleteTask(${t.id})">🗑️</button>
+                <div class="task-actions">
+                    <button class="task-action-btn" onclick="editTask(${t.id}, '${t.text.replace(/'/g, "\\'")}')">✏️</button>
+                    <button class="task-action-btn" onclick="deleteTask(${t.id})">🗑️</button>
+                </div>
             </div>
         </div>
     `).join('');
@@ -706,9 +713,116 @@ async function fetchNutrition() {
         document.getElementById('macro-fat').innerText = totalF + 'g';
         document.getElementById('macro-carbs').innerText = totalC + 'g';
         
+        // Render Pie Chart
+        renderNutritionPieChart(totalP, totalF, totalC);
+        
+        // Fetch 7 days for line chart
+        const res7 = await fetch(`/api/nutrition?period=7days`, { headers });
+        const data7 = await res7.json();
+        renderNutritionLineChart(data7.nutrition || []);
+        
         if (window.lucide) lucide.createIcons();
     } catch (e) {
         document.getElementById('nutrition-list').innerHTML = `<div class="loading">Ошибка</div>`;
+    }
+}
+
+let chartNutritionLine = null;
+let chartNutritionPie = null;
+
+function renderNutritionPieChart(p, f, c) {
+    const ctx = document.getElementById('nutritionPieChart');
+    if (!ctx) return;
+    
+    if (p === 0 && f === 0 && c === 0) {
+        if (chartNutritionPie) chartNutritionPie.destroy();
+        chartNutritionPie = null;
+        return;
+    }
+    
+    if (chartNutritionPie) {
+        chartNutritionPie.data.datasets[0].data = [p, f, c];
+        chartNutritionPie.update();
+    } else {
+        chartNutritionPie = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Белки', 'Жиры', 'Углеводы'],
+                datasets: [{
+                    data: [p, f, c],
+                    backgroundColor: ['#FF3B30', '#FFCC00', '#0A84FF'],
+                    borderWidth: 0,
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.label + ': ' + context.raw + 'g';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+}
+
+function renderNutritionLineChart(logs) {
+    const ctx = document.getElementById('nutritionLineChart');
+    if (!ctx) return;
+    
+    const today = new Date();
+    const chartData = [];
+    for (let i=6; i>=0; i--) {
+        const d = new Date(today);
+        d.setDate(d.getDate() - i);
+        const tzOffset = d.getTimezoneOffset() * 60000;
+        const dateStr = (new Date(d.getTime() - tzOffset)).toISOString().split('T')[0];
+        
+        const dayLogs = logs.filter(l => l.date_time.startsWith(dateStr));
+        const totalKcal = dayLogs.reduce((sum, l) => sum + (l.calories || 0), 0);
+        chartData.push({ date: d.getDate() + '/' + (d.getMonth()+1), kcal: totalKcal });
+    }
+    
+    const labels = chartData.map(d => d.date);
+    const values = chartData.map(d => d.kcal);
+    
+    if (chartNutritionLine) {
+        chartNutritionLine.data.labels = labels;
+        chartNutritionLine.data.datasets[0].data = values;
+        chartNutritionLine.update();
+    } else {
+        chartNutritionLine = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Ккал',
+                    data: values,
+                    borderColor: '#34C759',
+                    backgroundColor: 'rgba(52, 199, 89, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4,
+                    pointBackgroundColor: '#34C759'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
     }
 }
 
@@ -1259,10 +1373,98 @@ async function initApp() {
     await fetchProfileStats();
     await fetchTasks();
     
-    // Tell UI to render lucide icons
     if (window.lucide) {
         lucide.createIcons();
     }
 }
 
-document.addEventListener('DOMContentLoaded', initApp);
+// --- Theme Logic ---
+function toggleTheme() {
+    const root = document.documentElement;
+    const current = root.getAttribute('data-theme') || 'dark';
+    const next = current === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    localStorage.setItem('theme', next);
+    
+    const icon = document.getElementById('theme-icon');
+    if (icon && window.lucide) {
+        icon.setAttribute('data-lucide', next === 'dark' ? 'moon' : 'sun');
+        lucide.createIcons();
+    }
+}
+
+function initTheme() {
+    const saved = localStorage.getItem('theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', saved);
+    setTimeout(() => {
+        const icon = document.getElementById('theme-icon');
+        if (icon && window.lucide) {
+            icon.setAttribute('data-lucide', saved === 'dark' ? 'moon' : 'sun');
+            lucide.createIcons();
+        }
+    }, 100);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    initTheme();
+    initApp();
+});
+
+// --- Swipe Logic ---
+let swipeStartX = 0;
+let swipeCurrentX = 0;
+let swipeIsDragging = false;
+const swipeThreshold = 80;
+
+function handleSwipeStart(e) {
+    if (e.touches && e.touches.length > 0) {
+        swipeStartX = e.touches[0].clientX;
+        swipeIsDragging = true;
+    }
+}
+
+function handleSwipeMove(e) {
+    if (!swipeIsDragging) return;
+    if (e.touches && e.touches.length > 0) {
+        swipeCurrentX = e.touches[0].clientX;
+        const diffX = swipeCurrentX - swipeStartX;
+        const target = e.currentTarget;
+        
+        // Limit swipe range
+        let moveX = diffX;
+        if (moveX > 100) moveX = 100;
+        if (moveX < -100) moveX = -100;
+        
+        target.style.transform = `translateX(${moveX}px)`;
+        target.style.transition = 'none';
+    }
+}
+
+function handleSwipeEnd(e, id, type) {
+    if (!swipeIsDragging) return;
+    swipeIsDragging = false;
+    
+    const diffX = swipeCurrentX - swipeStartX;
+    const target = e.currentTarget;
+    target.style.transition = 'transform 0.3s ease-out';
+    
+    if (diffX > swipeThreshold) {
+        // Swipe Right (Complete)
+        target.style.transform = `translateX(100%)`;
+        setTimeout(() => {
+            if (type === 'task') completeTask(id);
+        }, 300);
+    } else if (diffX < -swipeThreshold) {
+        // Swipe Left (Delete)
+        target.style.transform = `translateX(-100%)`;
+        setTimeout(() => {
+            if (type === 'task') deleteTask(id);
+        }, 300);
+    } else {
+        // Snap back
+        target.style.transform = `translateX(0)`;
+    }
+    
+    swipeStartX = 0;
+    swipeCurrentX = 0;
+}

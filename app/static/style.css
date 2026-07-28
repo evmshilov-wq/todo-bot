@@ -377,15 +377,50 @@ body {
     height: 28px;
 }
 
-/* Task Item */
 .task-item {
     background: var(--card-bg);
     border: 1px solid var(--border-color);
     border-radius: 16px;
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+
+.task-swipe-bg {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    color: white;
+    font-size: 20px;
+    padding: 0 20px;
+    z-index: 0;
+}
+
+.task-swipe-right {
+    left: 0;
+    right: 50%;
+    background: #34C759;
+    justify-content: flex-start;
+}
+
+.task-swipe-left {
+    right: 0;
+    left: 50%;
+    background: #FF3B30;
+    justify-content: flex-end;
+}
+
+.task-item-content {
+    background: var(--card-bg);
     padding: 16px;
     display: flex;
     align-items: flex-start;
     gap: 12px;
+    position: relative;
+    z-index: 1;
+    transition: transform 0.3s ease-out;
 }
 
 .task-checkbox {

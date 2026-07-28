@@ -398,6 +398,22 @@ async def get_nutrition_for_date(user_id: int, target_date: date):
         result = await session.scalars(query)
         return [{"id": n.id, "date_time": n.date_time, "meal_name": n.meal_name, "calories": n.calories, "protein": n.protein, "carbs": n.carbs, "fat": n.fat} for n in result.all()]
 
+async def get_nutrition_for_period(user_id: int, days: int = 7):
+    from datetime import datetime, timedelta
+    from zoneinfo import ZoneInfo
+    async with async_session() as session:
+        user = await session.scalar(select(User).where(User.telegram_id == user_id))
+        tz_name = user.timezone if user and user.timezone else "Europe/Moscow"
+        now = datetime.now(ZoneInfo(tz_name))
+        start_date = (now - timedelta(days=days)).strftime("%Y-%m-%d")
+        
+        query = select(NutritionLog).where(
+            NutritionLog.user_id == user_id,
+            NutritionLog.date_time >= start_date
+        ).order_by(NutritionLog.date_time.asc())
+        
+        result = await session.scalars(query)
+        return [{"id": n.id, "date_time": n.date_time, "meal_name": n.meal_name, "calories": n.calories, "protein": n.protein, "carbs": n.carbs, "fat": n.fat} for n in result.all()]
 async def delete_nutrition_db(user_id: int, log_id: int):
     async with async_session() as session:
         await session.execute(delete(NutritionLog).where(NutritionLog.id == log_id, NutritionLog.user_id == user_id))

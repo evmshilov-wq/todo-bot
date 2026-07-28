@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Life OS</title>
-    <link rel="stylesheet" href="/static/style.css?v=2.6">
+    <link rel="stylesheet" href="/static/style.css?v=2.8">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -16,8 +16,13 @@
         <header class="header" style="flex-direction: column; align-items: stretch; gap: 12px;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <h1 class="header-title">Life OS</h1>
-                <div class="header-profile" id="header-profile-container" style="overflow: hidden;">
-                    <span id="user-initial">👤</span>
+                <div style="display: flex; gap: 12px; align-items: center;">
+                    <button class="icon-btn" onclick="toggleTheme()" style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; color: var(--text-main);">
+                        <i data-lucide="moon" id="theme-icon"></i>
+                    </button>
+                    <div class="header-profile" id="header-profile-container" style="overflow: hidden;">
+                        <span id="user-initial">👤</span>
+                    </div>
                 </div>
             </div>
             
@@ -309,6 +314,20 @@
                     </div>
                 </div>
 
+                <div class="charts-container" style="display: flex; gap: 16px; margin-top: 24px; flex-direction: column;">
+                    <!-- Line Chart: 7 days calories -->
+                    <div style="background: rgba(255,255,255,0.02); border-radius: 12px; padding: 12px; border: 1px solid var(--border-color);">
+                        <h4 style="font-size: 14px; margin-bottom: 12px; text-align: center;">Калории (7 дней)</h4>
+                        <canvas id="nutritionLineChart" style="width: 100%; height: 160px;"></canvas>
+                    </div>
+                    <!-- Pie Chart: Macros today -->
+                    <div style="background: rgba(255,255,255,0.02); border-radius: 12px; padding: 12px; border: 1px solid var(--border-color); display: flex; flex-direction: column; align-items: center;">
+                        <h4 style="font-size: 14px; margin-bottom: 12px;">Баланс БЖУ сегодня</h4>
+                        <div style="width: 160px; height: 160px;">
+                            <canvas id="nutritionPieChart"></canvas>
+                        </div>
+                    </div>
+                </div>
                 <div class="section-header" style="margin-top: 16px;">
                     <h3 id="nutrition-title">Приемы пищи</h3>
                 </div>
@@ -521,7 +540,7 @@
     </div>
 
     <!-- Core App Logic -->
-    <script src="/static/app.js?v=2.7"></script>
+    <script src="/static/app.js?v=2.8"></script>
     <script>
         lucide.createIcons();
     </script>

@@ -366,10 +366,17 @@ async def api_add_fitness(request: web.Request):
 async def api_get_nutrition(request: web.Request):
     user_id = get_user_id(request)
     if not user_id: return web.json_response({"error": "Unauthorized"}, status=401)
+    
+    period = request.query.get("period")
+    from app.database.requests import get_nutrition_for_date, get_nutrition_for_period
+    
+    if period == "7days":
+        nutrition = await get_nutrition_for_period(user_id, days=7)
+        return web.json_response({"nutrition": nutrition})
+        
     date_str = request.query.get("date")
     if not date_str: return web.json_response({"error": "Date required"}, status=400)
     target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
-    from app.database.requests import get_nutrition_for_date
     nutrition = await get_nutrition_for_date(user_id, target_date)
     return web.json_response({"nutrition": nutrition})
 
