@@ -8,6 +8,8 @@ async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit
 from sqlalchemy import text
 async def init_db():
     async with engine.begin() as conn:
+        await conn.execute(text("PRAGMA journal_mode=WAL;"))
+        await conn.execute(text("PRAGMA synchronous=NORMAL;"))
         await conn.run_sync(Base.metadata.create_all)
         try:
             await conn.execute(text("ALTER TABLE users ADD COLUMN xp INTEGER DEFAULT 0"))
