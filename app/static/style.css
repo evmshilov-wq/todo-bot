@@ -405,6 +405,8 @@ body {
     font-size: 20px;
     padding: 0 20px;
     z-index: 0;
+    opacity: 0;
+    transition: opacity 0.2s;
 }
 
 .task-swipe-right {

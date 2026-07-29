@@ -1443,6 +1443,19 @@ function handleSwipeMove(e) {
         
         target.style.transform = `translateX(${moveX}px)`;
         target.style.transition = 'none';
+        
+        const parent = target.parentElement;
+        if (parent) {
+            const bgR = parent.querySelector('.task-swipe-right');
+            const bgL = parent.querySelector('.task-swipe-left');
+            if (moveX > 0) {
+                if (bgR) bgR.style.opacity = '1';
+                if (bgL) bgL.style.opacity = '0';
+            } else if (moveX < 0) {
+                if (bgR) bgR.style.opacity = '0';
+                if (bgL) bgL.style.opacity = '1';
+            }
+        }
     }
 }
 
@@ -1469,6 +1482,13 @@ function handleSwipeEnd(e, id, type) {
     } else {
         // Snap back
         target.style.transform = `translateX(0)`;
+        const parent = target.parentElement;
+        if (parent) {
+            const bgR = parent.querySelector('.task-swipe-right');
+            const bgL = parent.querySelector('.task-swipe-left');
+            if (bgR) bgR.style.opacity = '0';
+            if (bgL) bgL.style.opacity = '0';
+        }
     }
     
     swipeStartX = 0;
