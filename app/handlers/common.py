@@ -53,7 +53,7 @@ from aiogram.fsm.context import FSMContext
 from app.services.ai_parser import parse_food_image
 from datetime import datetime
 from zoneinfo import ZoneInfo
-from app.database.requests import get_user_timezone, add_nutrition_db
+from app.database.requests import get_user_timezone, add_nutrition
 
 @router.message(F.photo)
 async def handle_photo(message: types.Message, bot: Bot, state: FSMContext):
@@ -109,7 +109,7 @@ async def callback_food_add(callback: types.CallbackQuery, state: FSMContext):
     tz_name = await get_user_timezone(user_id)
     now_str = datetime.now(ZoneInfo(tz_name)).strftime("%Y-%m-%d %H:%M")
     
-    await add_nutrition_db(
+    await add_nutrition(
         user_id=user_id,
         meal_name=food['meal_name'],
         calories=food['kcal'],
