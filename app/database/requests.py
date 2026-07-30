@@ -213,7 +213,7 @@ async def get_stats_for_digest(user_id: int, days: int) -> dict:
         habits = await session.scalars(select(Habit).where(Habit.user_id == user_id))
         habits_data = [{"name": h.name, "completed_today": h.last_completed_date == start_date} for h in habits]
         
-        workouts = (await session.scalars(select(Workout).where(Workout.user_id == user_id, Workout.date_time.startswith(start_date)))).all()
+        workouts = (await session.scalars(select(WorkoutLog).where(WorkoutLog.user_id == user_id, WorkoutLog.date_time.startswith(start_date)))).all()
         nutrition = (await session.scalars(select(NutritionLog).where(NutritionLog.user_id == user_id, NutritionLog.date_time.startswith(start_date)))).all()
         health = (await session.scalars(select(HealthLog).where(HealthLog.user_id == user_id, HealthLog.date_time.startswith(start_date)))).all()
         hobbies = (await session.scalars(select(HobbyLog).where(HobbyLog.user_id == user_id, HobbyLog.date_time.startswith(start_date)))).all()
@@ -223,8 +223,8 @@ async def get_stats_for_digest(user_id: int, days: int) -> dict:
         "pending": pending, 
         "period_days": days,
         "habits": habits_data,
-        "workouts": [{"exercise": w.exercise} for w in workouts],
-        "nutrition": [{"food": n.food_name} for n in nutrition],
+        "workouts": [{"exercise": w.exercise_name} for w in workouts],
+        "nutrition": [{"food": n.meal_name} for n in nutrition],
         "health": [{"sleep": h.sleep_hours} for h in health],
         "hobbies": [{"hobby": hb.hobby_name} for hb in hobbies]
     }
