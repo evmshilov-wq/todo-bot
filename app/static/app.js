@@ -546,9 +546,6 @@ async function fetchProfileStats() {
     } catch(e) {
         console.error(e);
     }
-    
-    // Call Tamagotchi Update
-    await fetchTamagotchi();
 }
 
 async function fetchAndRenderHeatmap() {
@@ -601,22 +598,7 @@ async function fetchAndRenderHeatmap() {
     }
 }
 
-async function fetchTamagotchi() {
-    try {
-        const res = await fetch('/api/tamagotchi', { headers });
-        const data = await res.json();
-        
-        const blob = document.getElementById('tama-blob');
-        const msg = document.getElementById('tama-message');
-        
-        if (blob && msg && data.state) {
-            msg.innerText = data.message;
-            blob.className = `tama-blob tama-${data.state}`;
-        }
-    } catch(e) {
-        console.error("Tamagotchi error:", e);
-    }
-}
+
 
 // ==========================================
 // CALENDAR & HEATMAP
