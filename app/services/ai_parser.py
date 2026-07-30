@@ -59,6 +59,43 @@ class NutritionActionModel(BaseModel):
     fat: Optional[int] = Field(0, description="Жиры (г)")
     date_time: Optional[str] = Field(None, description="Дата в формате YYYY-MM-DD HH:MM")
 
+class FoodNutritionModel(BaseModel):
+    is_food: bool = Field(description="Есть ли на фото еда (напитки тоже считаются)?")
+    meal_name: Optional[str] = Field(None, description="Краткое название блюда, например 'Стейк с салатом'")
+    kcal: Optional[int] = Field(None, description="Примерные килокалории (ккал) на всю порцию на фото")
+    protein: Optional[float] = Field(None, description="Примерные белки (г)")
+    fat: Optional[float] = Field(None, description="Примерные жиры (г)")
+    carbs: Optional[float] = Field(None, description="Примерные углеводы (г)")
+
+async def parse_food_image(image_bytes: bytes, mime_type: str = "image/jpeg") -> dict | None:
+    import asyncio
+    prompt = "Посмотри на это фото. Если на нем есть еда или напитки, определи, что это, и оцени примерную калорийность и БЖУ (на ту порцию, которая видна на фото). Отвечай строго в JSON."
+    
+    for attempt in range(3):
+        try:
+            # We must use gemini-1.5-flash as it is fast and supports vision
+            response = client.models.generate_content(
+                model='gemini-1.5-flash',
+                contents=[
+                    genai_types.Part.from_bytes(data=image_bytes, mime_type=mime_type),
+                    prompt
+                ],
+                config=genai_types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    response_schema=FoodNutritionModel,
+                    temperature=0.4
+                ),
+            )
+            data = json.loads(response.text)
+            return data
+        except Exception as e:
+            logging.error(f"Error parsing food image (attempt {attempt+1}): {e}")
+            if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+                await asyncio.sleep(4)
+                continue
+            return None
+    return None
+
 class InteractionActionModel(BaseModel):
     action: Literal["add", "delete"] = Field(description="add или delete")
     person_name: str = Field(description="Имя человека, с которым была встреча (например, 'Макс', 'Оля')")

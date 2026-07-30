@@ -1274,3 +1274,38 @@ async def api_del_finance(request: web.Request):
     from app.database.requests import delete_finance_log
     await delete_finance_log(user_id, log_id)
     return web.json_response({"status": "ok"})
+
+@routes.get("/api/tamagotchi")
+async def api_get_tamagotchi(request: web.Request):
+    user_id = get_user_id(request)
+    if not user_id: return web.json_response({"error": "Unauthorized"}, status=401)
+    
+    from app.database.requests import get_stats_for_digest
+    stats = await get_stats_for_digest(user_id, days=1)
+    
+    state = "happy"
+    message = "Я полон сил, погнали!"
+    
+    pending_count = len(stats.get("pending", []))
+    completed_count = len(stats.get("completed", []))
+    workouts = stats.get("workouts", [])
+    health = stats.get("health", [])
+    
+    # Logic
+    if workouts:
+        state = "strong"
+        message = "Тренировка засчитана! Мы машина! 💪"
+    elif pending_count > 3 and completed_count == 0:
+        state = "stressed"
+        message = "Столько задач... Глаза разбегаются! 😰"
+    elif health:
+        # Check if sleep is low in the latest health log today
+        sleep = health[0].sleep_hours
+        if sleep and sleep < 6:
+            state = "tired"
+            message = "Мало спали... Нужен кофе ☕️"
+            
+    if state == "happy" and completed_count > 0:
+        message = "Дела делаются, настроение супер! ✨"
+        
+    return web.json_response({"state": state, "message": message})

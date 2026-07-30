@@ -48,6 +48,84 @@ async def cmd_nuke(message: types.Message):
         await session.commit()
     await message.answer("💥 База данных успешно обнулена! Приложение теперь полностью чистое.")
 
+from aiogram import F
+from aiogram.fsm.context import FSMContext
+from app.services.ai_parser import parse_food_image
+from datetime import datetime
+from zoneinfo import ZoneInfo
+from app.database.requests import get_user_timezone, add_nutrition_db
+
+@router.message(F.photo)
+async def handle_photo(message: types.Message, bot: Bot, state: FSMContext):
+    processing_msg = await message.reply("👀 Смотрю на фото...")
+    
+    try:
+        photo = message.photo[-1]
+        file_info = await bot.get_file(photo.file_id)
+        downloaded = await bot.download_file(file_info.file_path)
+        image_bytes = downloaded.read()
+        
+        result = await parse_food_image(image_bytes)
+        
+        if not result or not result.get('is_food'):
+            await processing_msg.edit_text("Это не похоже на еду 🧐")
+            return
+            
+        meal = result.get('meal_name', 'Блюдо')
+        kcal = result.get('kcal', 0)
+        p = result.get('protein', 0)
+        f = result.get('fat', 0)
+        c = result.get('carbs', 0)
+        
+        await state.update_data(pending_food={
+            'meal_name': meal,
+            'kcal': kcal,
+            'protein': p,
+            'fat': f,
+            'carbs': c
+        })
+        
+        builder = InlineKeyboardBuilder()
+        builder.button(text="✅ Добавить", callback_data="food_add")
+        builder.button(text="❌ Отмена", callback_data="food_cancel")
+        
+        text = f"Я вижу: **{meal}** 🍔\n\nПримерное КБЖУ на порцию:\n🔥 {kcal} ккал\n🥩 Белки: {p} г\n🧈 Жиры: {f} г\n🍞 Углеводы: {c} г\n\nДобавить в дневник питания?"
+        await processing_msg.edit_text(text, reply_markup=builder.as_markup(), parse_mode="Markdown")
+        
+    except Exception as e:
+        import logging
+        logging.error(f"Error handling photo: {e}")
+        await processing_msg.edit_text("Произошла ошибка при анализе фото.")
+
+@router.callback_query(F.data == "food_add")
+async def callback_food_add(callback: types.CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    food = data.get('pending_food')
+    if not food:
+        await callback.message.edit_text("Данные устарели. Отправь фото заново.")
+        return
+        
+    user_id = callback.from_user.id
+    tz_name = await get_user_timezone(user_id)
+    now_str = datetime.now(ZoneInfo(tz_name)).strftime("%Y-%m-%d %H:%M")
+    
+    await add_nutrition_db(
+        user_id=user_id,
+        meal_name=food['meal_name'],
+        calories=food['kcal'],
+        protein=food['protein'],
+        fat=food['fat'],
+        carbs=food['carbs'],
+        date_time=now_str
+    )
+    
+    await state.update_data(pending_food=None)
+    await callback.message.edit_text(f"✅ **{food['meal_name']}** ({food['kcal']} ккал) добавлено в дневник питания!", parse_mode="Markdown")
+
+@router.callback_query(F.data == "food_cancel")
+async def callback_food_cancel(callback: types.CallbackQuery, state: FSMContext):
+    await state.update_data(pending_food=None)
+    await callback.message.edit_text("❌ Добавление отменено.")
 @router.message(lambda message: message.document and message.document.file_name == 'credentials.json')
 async def handle_credentials_upload(message: types.Message, bot: Bot):
     # Security check: you might want to restrict this to admins only, 
