@@ -335,11 +335,20 @@ async def process_chat_voice(file_path: str, chat_history: list, current_tasks: 
         return {"reply": "Прости, я не смог разобрать голосовое. Можешь повторить?", "tasks": [], "memories": []}
 
 async def generate_ai_digest(stats: dict, user_name: str, custom_prompt: str = None) -> str:
-    completed_str = "\n".join([f"- {t['text']} [{t['category']}]" for t in stats["completed"]]) or "Нет выполненных задач"
-    pending_str = "\n".join([f"- [{t['priority']}] {t['text']} [{t['category']}]" for t in stats["pending"]]) or "Все задачи закрыты!"
+    completed_str = "\n".join([f"- {t['text']} [{t.get('category', 'Без категории')}]" for t in stats.get("completed", [])]) or "Нет выполненных задач"
+    pending_str = "\n".join([f"- [{t.get('priority', 'C')}] {t['text']} [{t.get('category', 'Без категории')}]" for t in stats.get("pending", [])]) or "Все задачи закрыты!"
     
     if custom_prompt:
-        prompt = custom_prompt + f"\n\nДанные:\nВыполнено:\n{completed_str}\nОсталось:\n{pending_str}"
+        # If it's morning/midday, stats might just contain "tasks" or "pending_tasks" as strings
+        extra_data = ""
+        if "tasks" in stats and isinstance(stats["tasks"], str):
+            extra_data += f"\nЗадачи:\n{stats['tasks']}"
+        if "pending_tasks" in stats and isinstance(stats["pending_tasks"], str):
+            extra_data += f"\nЗадачи:\n{stats['pending_tasks']}"
+            
+        prompt = custom_prompt + f"\n\nДанные:{extra_data}"
+        if stats.get("completed") is not None or stats.get("pending") is not None:
+            prompt += f"\nВыполнено:\n{completed_str}\nОсталось:\n{pending_str}"
     else:
         prompt = f"""Ты суровый, но мотивирующий ИИ-коуч. Проанализируй задачи {user_name} за период {stats.get('period_days', 7)} дней.
 Выполнено:

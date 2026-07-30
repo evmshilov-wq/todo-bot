@@ -19,12 +19,14 @@ async def process_notifications():
     async with async_session() as session:
         users = (await session.scalars(select(User))).all()
         
+    utc_now = datetime.now(ZoneInfo("UTC"))
+        
     for user in users:
         tz_name = user.timezone or "Europe/Moscow"
         try:
-            now_user = datetime.now(ZoneInfo(tz_name))
+            now_user = utc_now.astimezone(ZoneInfo(tz_name))
         except Exception:
-            now_user = datetime.now(ZoneInfo("Europe/Moscow"))
+            now_user = utc_now.astimezone(ZoneInfo("Europe/Moscow"))
             
         current_time_str = now_user.strftime("%H:%M")
         
