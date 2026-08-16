@@ -395,34 +395,6 @@ body {
     gap: 12px;
 }
 
-.task-swipe-bg {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    display: flex;
-    align-items: center;
-    color: white;
-    font-size: 20px;
-    padding: 0 20px;
-    z-index: 0;
-    opacity: 0;
-    transition: opacity 0.2s;
-}
-
-.task-swipe-right {
-    left: 0;
-    right: 50%;
-    background: #34C759;
-    justify-content: flex-start;
-}
-
-.task-swipe-left {
-    right: 0;
-    left: 50%;
-    background: #FF3B30;
-    justify-content: flex-end;
-}
-
 .task-item-content {
     background: var(--card-bg);
     padding: 16px;
@@ -431,7 +403,6 @@ body {
     gap: 12px;
     position: relative;
     z-index: 1;
-    transition: transform 0.3s ease-out;
 }
 
 .task-checkbox {
@@ -441,6 +412,24 @@ body {
     border-radius: 6px;
     cursor: pointer;
     flex-shrink: 0;
+    transition: all 0.2s;
+}
+
+.task-checkbox.checked {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+    position: relative;
+}
+
+.task-checkbox.checked::after {
+    content: "✓";
+    color: white;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 14px;
+    font-weight: bold;
 }
 
 .task-content {

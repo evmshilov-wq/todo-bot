@@ -256,37 +256,54 @@ async def add_xp(user_id: int, amount: int):
             user.level = (user.xp // 100) + 1
             await session.commit()
 
-async def get_habits(user_id: int, target_date: date):
+async def get_habits(user_id: int, target_date_str: str):
     async with async_session() as session:
         habits = await session.scalars(select(Habit).where(Habit.user_id == user_id))
         result = []
         for h in habits:
-            log = await session.scalar(select(HabitLog).where(HabitLog.habit_id == h.id, HabitLog.date == target_date))
+            log = await session.scalar(select(HabitLog).where(HabitLog.habit_id == h.id, HabitLog.date_time == target_date_str))
+            completed = log.completed_count if log else 0
             result.append({
-                "id": h.id, "name": h.name, "frequency": h.frequency,
+                "id": h.id, "name": h.name, "frequency_type": h.frequency_type,
+                "specific_days": h.specific_days, "target_count": h.target_count,
                 "current_streak": h.current_streak, "longest_streak": h.longest_streak,
-                "is_completed": bool(log and log.is_completed)
+                "completed_count": completed, "is_completed": completed >= h.target_count
             })
         return result
 
-async def add_habit(user_id: int, name: str, frequency: str = "daily"):
+async def add_habit(user_id: int, name: str, frequency_type: str = "daily", specific_days: str = None, target_count: int = 1):
     async with async_session() as session:
-        session.add(Habit(user_id=user_id, name=name, frequency=frequency))
+        session.add(Habit(user_id=user_id, name=name, frequency_type=frequency_type, specific_days=specific_days, target_count=target_count))
+        await session.commit()
+        
+async def delete_habit(user_id: int, habit_id: int):
+    async with async_session() as session:
+        await session.execute(delete(HabitLog).where(HabitLog.habit_id == habit_id))
+        await session.execute(delete(Habit).where(Habit.id == habit_id, Habit.user_id == user_id))
         await session.commit()
 
-async def complete_habit(user_id: int, habit_id: int, target_date: date):
+async def log_habit(user_id: int, habit_id: int, target_date_str: str, increment: int = 1):
     async with async_session() as session:
         habit = await session.scalar(select(Habit).where(Habit.id == habit_id, Habit.user_id == user_id))
         if not habit: return False
-        log = await session.scalar(select(HabitLog).where(HabitLog.habit_id == habit_id, HabitLog.date == target_date))
+        log = await session.scalar(select(HabitLog).where(HabitLog.habit_id == habit_id, HabitLog.date_time == target_date_str))
         if not log:
-            session.add(HabitLog(habit_id=habit_id, date=target_date, is_completed=1))
+            log = HabitLog(habit_id=habit_id, date_time=target_date_str, completed_count=increment)
+            session.add(log)
+        else:
+            log.completed_count += increment
+            if log.completed_count < 0: log.completed_count = 0
+            
+        # Simplified streak update (only increments when completed, doesn't handle retro-active broken streaks perfectly but ok for now)
+        if log.completed_count >= habit.target_count and log.completed_count - increment < habit.target_count:
             habit.current_streak += 1
             if habit.current_streak > habit.longest_streak:
                 habit.longest_streak = habit.current_streak
-            await session.commit()
-            return True
-        return False
+        elif log.completed_count < habit.target_count and log.completed_count - increment >= habit.target_count:
+             habit.current_streak = max(0, habit.current_streak - 1)
+             
+        await session.commit()
+        return True
 
 from app.database.models import ChatMessage, Memory, Note
 
@@ -448,40 +465,10 @@ async def delete_interaction(user_id: int, log_id: int):
         await session.execute(delete(InteractionLog).where(InteractionLog.id == log_id, InteractionLog.user_id == user_id))
         await session.commit()
 
-# --- Hobby Logs ---
-async def add_hobby_log(user_id: int, date_time: str, hobby_name: str, duration_minutes: int = 0, notes: str = None):
-    async with async_session() as session:
-        session.add(HobbyLog(user_id=user_id, date_time=date_time, hobby_name=hobby_name, duration_minutes=duration_minutes, notes=notes))
-        await session.commit()
-        await add_xp_to_user(user_id, 10)
-
-async def get_hobby_logs_for_date(user_id: int, target_date: date):
-    async with async_session() as session:
-        date_str = target_date.strftime("%Y-%m-%d")
-        query = select(HobbyLog).where(
-            HobbyLog.user_id == user_id,
-            HobbyLog.date_time.startswith(date_str)
-        ).order_by(HobbyLog.id.desc())
-        result = await session.scalars(query)
-        return [{"id": h.id, "date_time": h.date_time, "hobby_name": h.hobby_name, "duration_minutes": h.duration_minutes, "notes": h.notes} for h in result.all()]
-
-async def get_all_hobby_logs(user_id: int, limit: int = 50):
-    async with async_session() as session:
-        query = select(HobbyLog).where(
-            HobbyLog.user_id == user_id
-        ).order_by(HobbyLog.date_time.desc()).limit(limit)
-        result = await session.scalars(query)
-        return [{"id": h.id, "date_time": h.date_time, "hobby_name": h.hobby_name, "duration_minutes": h.duration_minutes, "notes": h.notes} for h in result.all()]
-
-async def delete_hobby_log(user_id: int, log_id: int):
-    async with async_session() as session:
-        await session.execute(delete(HobbyLog).where(HobbyLog.id == log_id, HobbyLog.user_id == user_id))
-        await session.commit()
-
 # --- Health Logs ---
-async def add_health_log(user_id: int, date_time: str, sleep_hours: float = 0, water_ml: int = 0, energy_level: int = 0, notes: str = None):
+async def add_health_log(user_id: int, date_time: str, sleep_hours: float = 0, energy_level: int = 0, notes: str = None):
     async with async_session() as session:
-        session.add(HealthLog(user_id=user_id, date_time=date_time, sleep_hours=sleep_hours, water_ml=water_ml, energy_level=energy_level, notes=notes))
+        session.add(HealthLog(user_id=user_id, date_time=date_time, sleep_hours=sleep_hours, energy_level=energy_level, notes=notes))
         await session.commit()
         await add_xp_to_user(user_id, 10)
 
@@ -493,7 +480,7 @@ async def get_health_logs_for_date(user_id: int, target_date: date):
             HealthLog.date_time.startswith(date_str)
         ).order_by(HealthLog.id.desc())
         result = await session.scalars(query)
-        return [{"id": h.id, "date_time": h.date_time, "sleep_hours": h.sleep_hours, "water_ml": h.water_ml, "energy_level": h.energy_level, "notes": h.notes} for h in result.all()]
+        return [{"id": h.id, "date_time": h.date_time, "sleep_hours": h.sleep_hours, "energy_level": h.energy_level, "notes": h.notes} for h in result.all()]
 
 async def get_health_logs_for_period(user_id: int, start_date: date, end_date: date):
     async with async_session() as session:
@@ -505,32 +492,11 @@ async def get_health_logs_for_period(user_id: int, start_date: date, end_date: d
             HealthLog.date_time <= f"{end_str} 23:59"
         ).order_by(HealthLog.date_time.asc())
         result = await session.scalars(query)
-        return [{"id": h.id, "date_time": h.date_time, "sleep_hours": h.sleep_hours, "water_ml": h.water_ml, "energy_level": h.energy_level, "notes": h.notes} for h in result.all()]
+        return [{"id": h.id, "date_time": h.date_time, "sleep_hours": h.sleep_hours, "energy_level": h.energy_level, "notes": h.notes} for h in result.all()]
 
 async def delete_health_log(user_id: int, log_id: int):
     async with async_session() as session:
         await session.execute(delete(HealthLog).where(HealthLog.id == log_id, HealthLog.user_id == user_id))
-        await session.commit()
-
-# --- Finance Logs ---
-async def add_finance_log(user_id: int, date_time: str, amount: float, currency: str = "RUB", category: str = None, transaction_type: str = "expense", notes: str = None):
-    async with async_session() as session:
-        session.add(FinanceLog(user_id=user_id, date_time=date_time, amount=amount, currency=currency, category=category, transaction_type=transaction_type, notes=notes))
-        await session.commit()
-
-async def get_finance_logs_for_date(user_id: int, target_date: date):
-    async with async_session() as session:
-        date_str = target_date.strftime("%Y-%m-%d")
-        query = select(FinanceLog).where(
-            FinanceLog.user_id == user_id,
-            FinanceLog.date_time.startswith(date_str)
-        ).order_by(FinanceLog.id.desc())
-        result = await session.scalars(query)
-        return [{"id": f.id, "date_time": f.date_time, "amount": f.amount, "currency": f.currency, "category": f.category, "transaction_type": f.transaction_type, "notes": f.notes} for f in result.all()]
-
-async def delete_finance_log(user_id: int, log_id: int):
-    async with async_session() as session:
-        await session.execute(delete(FinanceLog).where(FinanceLog.id == log_id, FinanceLog.user_id == user_id))
         await session.commit()
 
 async def get_fitness_chart_data(user_id: int, days: int = 14):

@@ -10,6 +10,15 @@ async def init_db():
     async with engine.begin() as conn:
         await conn.execute(text("PRAGMA journal_mode=WAL;"))
         await conn.execute(text("PRAGMA synchronous=NORMAL;"))
+        
+        # Stage 5 cleanup migrations
+        try:
+            await conn.execute(text("DROP TABLE IF EXISTS finance_logs"))
+            await conn.execute(text("DROP TABLE IF EXISTS hobby_logs"))
+            await conn.execute(text("DROP TABLE IF EXISTS interaction_logs"))
+        except Exception as e:
+            print(f"Cleanup migration error: {e}")
+            
         await conn.run_sync(Base.metadata.create_all)
         try:
             await conn.execute(text("ALTER TABLE users ADD COLUMN xp INTEGER DEFAULT 0"))

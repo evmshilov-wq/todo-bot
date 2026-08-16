@@ -31,7 +31,9 @@ class Habit(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(BigInteger)
     name: Mapped[str] = mapped_column(String)
-    frequency: Mapped[str] = mapped_column(String, default="daily")
+    frequency_type: Mapped[str] = mapped_column(String, default="daily") # daily, specific_days
+    specific_days: Mapped[str] = mapped_column(String, nullable=True) # e.g. "0,2,4" for Mon,Wed,Fri
+    target_count: Mapped[int] = mapped_column(Integer, default=1)
     current_streak: Mapped[int] = mapped_column(Integer, default=0)
     longest_streak: Mapped[int] = mapped_column(Integer, default=0)
 
@@ -39,8 +41,8 @@ class HabitLog(Base):
     __tablename__ = 'habit_logs'
     id: Mapped[int] = mapped_column(primary_key=True)
     habit_id: Mapped[int] = mapped_column(ForeignKey('habits.id'))
-    date: Mapped[date] = mapped_column(Date)
-    is_completed: Mapped[int] = mapped_column(Integer, default=1)
+    date_time: Mapped[str] = mapped_column(String) # ISO date YYYY-MM-DD
+    completed_count: Mapped[int] = mapped_column(Integer, default=0)
 
 class Task(Base):
     __tablename__ = 'tasks'
@@ -108,40 +110,11 @@ class Note(Base):
     embedding: Mapped[str] = mapped_column(String, nullable=True) # JSON string of floats
     sphere: Mapped[str] = mapped_column(String, default="work")
 
-class InteractionLog(Base):
-    __tablename__ = 'interaction_logs'
-    id: Mapped[int] = mapped_column(primary_key=True)
-    user_id: Mapped[int] = mapped_column(BigInteger)
-    person_name: Mapped[str] = mapped_column(String)
-    date_time: Mapped[str] = mapped_column(String)
-    notes: Mapped[str] = mapped_column(String, nullable=True)
-
-class HobbyLog(Base):
-    __tablename__ = 'hobby_logs'
-    id: Mapped[int] = mapped_column(primary_key=True)
-    user_id: Mapped[int] = mapped_column(BigInteger)
-    hobby_name: Mapped[str] = mapped_column(String)
-    duration_minutes: Mapped[int] = mapped_column(Integer, default=0)
-    date_time: Mapped[str] = mapped_column(String)
-    notes: Mapped[str] = mapped_column(String, nullable=True)
-
 class HealthLog(Base):
     __tablename__ = 'health_logs'
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(BigInteger)
     date_time: Mapped[str] = mapped_column(String)
     sleep_hours: Mapped[float] = mapped_column(Float, default=0.0)
-    water_ml: Mapped[int] = mapped_column(Integer, default=0)
     energy_level: Mapped[int] = mapped_column(Integer, default=0) # 1-10
-    notes: Mapped[str] = mapped_column(String, nullable=True)
-
-class FinanceLog(Base):
-    __tablename__ = 'finance_logs'
-    id: Mapped[int] = mapped_column(primary_key=True)
-    user_id: Mapped[int] = mapped_column(BigInteger)
-    date_time: Mapped[str] = mapped_column(String)
-    amount: Mapped[float] = mapped_column(Float, default=0.0)
-    currency: Mapped[str] = mapped_column(String, default="RUB")
-    category: Mapped[str] = mapped_column(String, nullable=True)
-    transaction_type: Mapped[str] = mapped_column(String, default="expense") # expense / income
     notes: Mapped[str] = mapped_column(String, nullable=True)

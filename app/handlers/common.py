@@ -259,3 +259,67 @@ async def handle_chat_message(message: types.Message, bot: Bot):
 
     await status_msg.edit_text(reply_text)
 
+@router.callback_query(lambda c: c.data and (c.data.startswith('mood_') or c.data.startswith('sleep_') or c.data.startswith('habit_toggle_') or c.data == 'digest_done'))
+async def process_digest_callback(callback_query: types.CallbackQuery):
+    user_id = callback_query.from_user.id
+    data = callback_query.data
+    
+    # Extract current markup to modify it
+    markup = callback_query.message.reply_markup
+    keyboard = markup.inline_keyboard if markup else []
+    
+    from app.database.requests import add_xp
+    
+    if data.startswith('mood_'):
+        val = data.split('_')[1]
+        for row in keyboard:
+            for btn in row:
+                if btn.callback_data and btn.callback_data.startswith('mood_'):
+                    if btn.callback_data == data:
+                        btn.text = f"✅ {val}"
+                    else:
+                        btn.text = btn.text.replace("✅ ", "")
+        await add_xp(user_id, 5)
+        await callback_query.message.edit_reply_markup(reply_markup=types.InlineKeyboardMarkup(inline_keyboard=keyboard))
+        await callback_query.answer("Настроение сохранено! +5 XP")
+        
+    elif data.startswith('sleep_'):
+        val = data.split('_')[1]
+        for row in keyboard:
+            for btn in row:
+                if btn.callback_data and btn.callback_data.startswith('sleep_'):
+                    if btn.callback_data == data:
+                        btn.text = f"✅ {btn.text.replace('✅ ', '')}"
+                    else:
+                        btn.text = btn.text.replace("✅ ", "")
+        await add_xp(user_id, 5)
+        await callback_query.message.edit_reply_markup(reply_markup=types.InlineKeyboardMarkup(inline_keyboard=keyboard))
+        await callback_query.answer("Сон сохранен! +5 XP")
+        
+    elif data.startswith('habit_toggle_'):
+        # Visually toggle it and add XP and save to DB
+        habit_id = int(data.split('_')[-1])
+        from app.database.requests import log_habit, get_user_timezone
+        user_tz = await get_user_timezone(user_id)
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+        today_str = datetime.now(ZoneInfo(user_tz)).strftime("%Y-%m-%d")
+        
+        for row in keyboard:
+            for btn in row:
+                if btn.callback_data == data:
+                    if "❌" in btn.text:
+                        btn.text = btn.text.replace("❌", "✅")
+                        await add_xp(user_id, 10)
+                        await log_habit(user_id, habit_id, today_str, 1)
+                        await callback_query.answer("Привычка выполнена! +10 XP")
+                    else:
+                        btn.text = btn.text.replace("✅", "❌")
+                        await log_habit(user_id, habit_id, today_str, -1)
+                        await callback_query.answer("Отменено")
+        await callback_query.message.edit_reply_markup(reply_markup=types.InlineKeyboardMarkup(inline_keyboard=keyboard))
+        
+    elif data == 'digest_done':
+        # Send a nice closing message and remove buttons
+        await callback_query.message.edit_text(f"{callback_query.message.text}\n\n*Отлично! Данные сохранены. Спокойной ночи! 🌙*", parse_mode="Markdown")
+        await callback_query.answer("Дайджест завершен!")

@@ -38,8 +38,12 @@ async def process_notifications():
                     tasks_list_str = "\n".join([f"• {t['text']} {'(Без времени)' if t['is_timeless'] else (t['date_time'][11:16] if t['date_time'] else '')}" for t in tasks])
                     stats_for_morning = {"tasks": tasks_list_str}
                     prompt = "Напиши утреннее сообщение. Пожелай доброго утра, перечисли задачи на день и добавь короткую микро-мотивацию. Пиши тепло и эмпатично, как друг. Без markdown заголовков."
-                    digest = await generate_ai_digest(stats_for_morning, "Пользователь", custom_prompt=prompt)
-                    await bot_instance.send_message(user.telegram_id, f"🌅 Доброе утро!\n\n{digest}")
+                else:
+                    stats_for_morning = {"tasks": "Нет задач"}
+                    prompt = "Напиши утреннее сообщение. Пожелай доброго и продуктивного дня. Задач на сегодня пока нет. Короткая мотивация. Без markdown заголовков."
+                
+                digest = await generate_ai_digest(stats_for_morning, "Пользователь", custom_prompt=prompt)
+                await bot_instance.send_message(user.telegram_id, f"🌅 Доброе утро!\n\n{digest}")
             except Exception as e:
                 logging.error(f"Failed to send morning digest: {e}")
                 
@@ -60,40 +64,41 @@ async def process_notifications():
         # Check evening digest
         if user.evening_time and current_time_str == user.evening_time:
             try:
-                stats = await get_stats_for_digest(user.telegram_id, days=1)
+                from app.database.requests import get_habits
+                habits = await get_habits(user.telegram_id, now_user.strftime("%Y-%m-%d"))
                 
-                # Штраф за невыполненные привычки
-                habits = stats.get("habits", [])
-                missed_habits = []
+                from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+                
+                kb = []
+                # Mood
+                kb.append([
+                    InlineKeyboardButton(text="Настроение: 1", callback_data="mood_1"),
+                    InlineKeyboardButton(text="2", callback_data="mood_2"),
+                    InlineKeyboardButton(text="3", callback_data="mood_3"),
+                    InlineKeyboardButton(text="4", callback_data="mood_4"),
+                    InlineKeyboardButton(text="5", callback_data="mood_5"),
+                ])
+                # Sleep
+                kb.append([
+                    InlineKeyboardButton(text="Сон: <6 ч", callback_data="sleep_5"),
+                    InlineKeyboardButton(text="6-7 ч", callback_data="sleep_6.5"),
+                    InlineKeyboardButton(text="8+ ч", callback_data="sleep_8"),
+                ])
+                
+                # Habits
                 for h in habits:
-                    if not h.get("completed_today"):
-                        missed_habits.append(h["name"])
-                        await add_xp_to_user(user.telegram_id, -10)
+                    if not h["is_completed"]:
+                        kb.append([InlineKeyboardButton(text=f"❌ {h['name']}", callback_data=f"habit_toggle_{h['id']}")])
+                        
+                kb.append([InlineKeyboardButton(text="💾 Завершить день", callback_data="digest_done")])
                 
-                # Проверка незаполненных сфер
-                missing_spheres = []
-                if not stats.get("workouts"): missing_spheres.append("Тренировки")
-                if not stats.get("nutrition"): missing_spheres.append("Питание")
-                if not stats.get("health"): missing_spheres.append("Здоровье и Сон")
-                if not stats.get("hobbies"): missing_spheres.append("Хобби")
-                
-                stats["missing_spheres"] = missing_spheres
-                stats["missed_habits"] = missed_habits
-                
-                # Fetch recent trends for AI proactivity
-                from app.database.requests import get_health_logs_for_period, get_nutrition_for_period
-                from datetime import timedelta
-                start_d = (now_user - timedelta(days=3)).date()
-                end_d = now_user.date()
-                recent_health = await get_health_logs_for_period(user.telegram_id, start_d, end_d)
-                recent_nutrition = await get_nutrition_for_period(user.telegram_id, days=3)
-                
-                stats["recent_3days_health"] = recent_health
-                stats["recent_3days_nutrition"] = recent_nutrition
-                
-                prompt = "Подведи вечерние итоги дня. Похвали за выполненное. Спроси про самочувствие. Если в stats есть missing_spheres, мягко спроси, почему они пустые. Проанализируй recent_3days_health и recent_3days_nutrition: если видишь недосып (<6 часов) или очень мало белка, прояви заботу и дай рекомендацию (например, 'ложись спать пораньше, ты мало спишь последние дни'). Будь эмпатичен."
-                digest = await generate_ai_digest(stats, "Пользователь", custom_prompt=prompt)
-                await bot_instance.send_message(user.telegram_id, f"🌙 Итоги дня:\n\n{digest}")
+                reply_markup = InlineKeyboardMarkup(inline_keyboard=kb)
+                await bot_instance.send_message(
+                    user.telegram_id, 
+                    "🌙 **Вечерний дайджест**\nКак прошел твой день? Оцени настроение, сон и отметь выполненные привычки!", 
+                    reply_markup=reply_markup,
+                    parse_mode="Markdown"
+                )
             except Exception as e:
                 logging.error(f"Failed to send evening digest: {e}")
 

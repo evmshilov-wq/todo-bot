@@ -20,10 +20,8 @@ const els = {
     statWork: document.getElementById('stat-work'),
     statFitness: document.getElementById('stat-fitness'),
     statNutrition: document.getElementById('stat-nutrition'),
-    statRelationships: document.getElementById('stat-relationships'),
-    statHobbies: document.getElementById('stat-hobbies'),
     statHealth: document.getElementById('stat-health'),
-    statFinance: document.getElementById('stat-finance'),
+    statHabits: document.getElementById('stat-habits'),
 };
 
 let selectedDate = new Date();
@@ -140,18 +138,11 @@ function openView(viewId) {
     } else if (viewId === 'view-nutrition') {
         renderDatePicker('nutrition-date-picker');
         fetchNutrition();
-    } else if (viewId === 'view-relationships') {
-        renderDatePicker('relationships-date-picker');
-        fetchRelationships();
-    } else if (viewId === 'view-hobbies') {
-        renderDatePicker('hobbies-date-picker');
-        fetchHobbies();
     } else if (viewId === 'view-health') {
         renderDatePicker('health-date-picker');
         fetchHealth();
-    } else if (viewId === 'view-finance') {
-        renderDatePicker('finance-date-picker');
-        fetchFinance();
+    } else if (viewId === 'view-habits') {
+        fetchHabits();
     }
 }
 
@@ -255,155 +246,7 @@ function selectDate(dateStr) {
 }
 
 
-function openChat() {
-    const overlay = document.getElementById('chat-overlay');
-    overlay.classList.remove('hidden');
-    // small delay to allow display:block to apply before transform transition
-    setTimeout(() => {
-        overlay.classList.add('active');
-        fetchChat();
-    }, 10);
-}
 
-function closeChat() {
-    const overlay = document.getElementById('chat-overlay');
-    overlay.classList.remove('active');
-    setTimeout(() => {
-        overlay.classList.add('hidden');
-    }, 300); // match transition duration
-}
-
-async function fetchChat() {
-    const messagesContainer = document.getElementById('chat-messages');
-    try {
-        const res = await fetch('/api/chat', { headers });
-        const data = await res.json();
-        
-        if (data.messages && data.messages.length > 0) {
-            messagesContainer.innerHTML = data.messages.map(m => `
-                <div class="chat-msg ${m.role}">
-                    ${m.text}
-                </div>
-            `).join('');
-        } else {
-            messagesContainer.innerHTML = `<div class="loading">Нет сообщений. Напиши что-нибудь!</div>`;
-        }
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    } catch (e) {
-        messagesContainer.innerHTML = `<div class="loading">Ошибка загрузки чата</div>`;
-    }
-}
-
-async function sendText() {
-    const input = document.getElementById('ai-text-input');
-    const text = input.value.trim();
-    if (!text) return;
-    
-    input.value = '';
-    const messagesContainer = document.getElementById('chat-messages');
-    
-    // Optimistic UI
-    messagesContainer.innerHTML += `<div class="chat-msg user">${text}</div>`;
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    
-    const status = document.getElementById('ai-status');
-    status.innerText = "Второй мозг думает...";
-    
-    try {
-        const res = await fetch('/api/ai_text', {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({ text })
-        });
-        const data = await res.json();
-        status.innerText = "";
-        
-        if (data.reply) {
-            messagesContainer.innerHTML += `<div class="chat-msg assistant">${data.reply}</div>`;
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-        }
-        
-        // Refresh dashboard data
-        fetchTasks();
-        fetchNotes();
-        fetchFitness();
-        fetchNutrition();
-        fetchRelationships();
-        fetchHobbies();
-        fetchProfileStats();
-    } catch (e) {
-        status.innerText = "Ошибка отправки";
-    }
-}
-
-let isRecording = false;
-let mediaRecorder;
-let audioChunks = [];
-
-async function toggleVoice() {
-    const btn = document.getElementById('btn-voice');
-    const status = document.getElementById('ai-status');
-    
-    if (!isRecording) {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
-            
-            mediaRecorder.ondataavailable = e => {
-                if (e.data.size > 0) audioChunks.push(e.data);
-            };
-            
-            mediaRecorder.onstop = async () => {
-                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                audioChunks = [];
-                const formData = new FormData();
-                formData.append('audio', audioBlob, 'voice.webm');
-                
-                status.innerText = "Отправка аудио...";
-                const messagesContainer = document.getElementById('chat-messages');
-                messagesContainer.innerHTML += `<div class="chat-msg user">🎤 [Голосовое сообщение]</div>`;
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
-                
-                try {
-                    const res = await fetch('/api/ai_voice', {
-                        method: 'POST',
-                        headers: { 'Authorization': headers['Authorization'] },
-                        body: formData
-                    });
-                    const data = await res.json();
-                    status.innerText = "";
-                    if (data.reply) {
-                        messagesContainer.innerHTML += `<div class="chat-msg assistant">${data.reply}</div>`;
-                        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-                    }
-                    fetchTasks();
-                    fetchNotes();
-                    fetchFitness();
-                    fetchNutrition();
-                    fetchRelationships();
-                    fetchHobbies();
-                    fetchProfileStats();
-                } catch (e) {
-                    status.innerText = "Ошибка распознавания";
-                }
-            };
-            
-            audioChunks = [];
-            mediaRecorder.start();
-            isRecording = true;
-            btn.classList.add('recording');
-            status.innerText = "Запись...";
-        } catch (e) {
-            alert('Нет доступа к микрофону. Проверьте настройки браузера/Telegram.');
-        }
-    } else {
-        mediaRecorder.stop();
-        mediaRecorder.stream.getTracks().forEach(t => t.stop());
-        isRecording = false;
-        btn.classList.remove('recording');
-        status.innerText = "Обработка...";
-    }
-}
 
 
 async function fetchTasks() {
@@ -436,13 +279,8 @@ function renderTasks(tasks) {
     
     els.tasksList.innerHTML = tasks.map(t => `
         <div class="task-item" data-id="${t.id}" data-type="task">
-            <div class="task-swipe-bg task-swipe-right">✅</div>
-            <div class="task-swipe-bg task-swipe-left">🗑️</div>
-            <div class="task-item-content" 
-                 ontouchstart="handleSwipeStart(event)" 
-                 ontouchmove="handleSwipeMove(event)" 
-                 ontouchend="handleSwipeEnd(event, ${t.id}, 'task')">
-                <div class="task-checkbox" onclick="completeTask(${t.id})"></div>
+            <div class="task-item-content">
+                <div class="task-checkbox" onclick="event.stopPropagation(); completeTask(${t.id}, this)"></div>
                 <div class="task-content">
                     <div class="task-text">${t.text}</div>
                     <div class="task-meta">
@@ -451,20 +289,28 @@ function renderTasks(tasks) {
                     </div>
                 </div>
                 <div class="task-actions">
-                    <button class="task-action-btn" onclick="editTask(${t.id}, '${t.text.replace(/'/g, "\\'")}')">✏️</button>
-                    <button class="task-action-btn" onclick="deleteTask(${t.id})">🗑️</button>
+                    <button class="task-action-btn" onclick="event.stopPropagation(); editTask(${t.id}, '${t.text.replace(/'/g, "\\'")}')">✏️</button>
+                    <button class="task-action-btn" onclick="event.stopPropagation(); deleteTask(${t.id})">🗑️</button>
                 </div>
             </div>
         </div>
     `).join('');
 }
 
-async function completeTask(id) {
+async function completeTask(id, btnElement) {
+    if (btnElement) {
+        btnElement.classList.add('checked');
+    }
     try {
         await fetch(`/api/tasks/${id}/complete`, { method: 'POST', headers });
-        fetchTasks();
+        setTimeout(() => {
+            fetchTasks();
+            fetchDashboardStats();
+            fetchHeatmap();
+        }, 300);
     } catch (e) {
         console.error(e);
+        if (btnElement) btnElement.classList.remove('checked');
     }
 }
 
@@ -539,8 +385,8 @@ async function fetchProfileStats() {
         const statHealth = document.getElementById('stat-health');
         if (statHealth) statHealth.innerText = data.sleep_today > 0 ? `Сон: ${data.sleep_today} ч` : 'Нет записей';
         
-        const statHobbies = document.getElementById('stat-hobbies');
-        if (statHobbies) statHobbies.innerText = data.hobbies_count > 0 ? `Записей сегодня: ${data.hobbies_count}` : 'Нет записей';
+        const statHabits = document.getElementById('stat-habits');
+        if (statHabits) statHabits.innerText = data.habits_completed > 0 ? `Выполнено: ${data.habits_completed}` : 'Нет привычек на сегодня';
         
         await fetchAndRenderHeatmap();
     } catch(e) {
@@ -844,10 +690,8 @@ function openManualInput(type) {
     modal.classList.remove('hidden');
     document.getElementById('form-fitness').classList.add('hidden');
     document.getElementById('form-nutrition').classList.add('hidden');
-    document.getElementById('form-relationships').classList.add('hidden');
-    document.getElementById('form-hobbies').classList.add('hidden');
+    document.getElementById('form-habits').classList.add('hidden');
     document.getElementById('form-health').classList.add('hidden');
-    document.getElementById('form-finance').classList.add('hidden');
     
     if (type === 'fitness') {
         document.getElementById('manual-title').innerText = "Добавить упражнение";
@@ -857,18 +701,12 @@ function openManualInput(type) {
     } else if (type === 'nutrition') {
         document.getElementById('manual-title').innerText = "Добавить прием пищи";
         document.getElementById('form-nutrition').classList.remove('hidden');
-    } else if (type === 'relationships') {
-        document.getElementById('manual-title').innerText = "Добавить встречу";
-        document.getElementById('form-relationships').classList.remove('hidden');
-    } else if (type === 'hobbies') {
-        document.getElementById('manual-title').innerText = "Добавить хобби";
-        document.getElementById('form-hobbies').classList.remove('hidden');
+    } else if (type === 'habits') {
+        document.getElementById('manual-title').innerText = "Добавить привычку";
+        document.getElementById('form-habits').classList.remove('hidden');
     } else if (type === 'health') {
         document.getElementById('manual-title').innerText = "Добавить данные о здоровье";
         document.getElementById('form-health').classList.remove('hidden');
-    } else if (type === 'finance') {
-        document.getElementById('manual-title').innerText = "Добавить транзакцию";
-        document.getElementById('form-finance').classList.remove('hidden');
     }
     
     setTimeout(() => {
@@ -988,121 +826,72 @@ async function saveManualNutrition() {
     }
 }
 
-// --- Relationships & Hobbies Logic ---
-async function fetchRelationships() {
+// --- Habits Logic ---
+async function fetchHabits() {
     try {
-        const tzOffset = selectedDate.getTimezoneOffset() * 60000;
-        const localISOTime = (new Date(selectedDate.getTime() - tzOffset)).toISOString().split('T')[0];
-        const res = await fetch(`/api/relationships?date=${localISOTime}`, { headers });
+        const res = await fetch('/api/habits', { headers });
         const data = await res.json();
-        const list = document.getElementById('relationships-list');
+        const list = document.getElementById('habits-list');
         
-        if (data.relationships && data.relationships.length > 0) {
-            list.innerHTML = data.relationships.map(r => `
+        if (data.habits && data.habits.length > 0) {
+            list.innerHTML = data.habits.map(h => `
                 <div class="task-item task-item-simple">
-                    <div class="task-circle" style="border-color: #FF2D55;"><i data-lucide="users" style="width: 14px; height: 14px; color: #FF2D55;"></i></div>
+                    <div class="task-circle" style="border-color: #AF52DE;"><i data-lucide="check-square" style="width: 14px; height: 14px; color: #AF52DE;"></i></div>
                     <div class="task-content">
-                        <div class="task-text">${r.person_name}</div>
-                        <div class="task-meta">${r.date_time.split(' ')[0]} | ${r.notes || ''}</div>
+                        <div class="task-text">${h.name}</div>
+                        <div class="task-meta">${h.frequency_type === 'daily' ? 'Каждый день' : h.frequency_type === 'weekly' ? h.target_count + ' раз в неделю' : 'Определенные дни'} | Стрик: ${h.current_streak} 🔥</div>
                     </div>
                     <div class="task-actions">
-                        <button class="task-action-btn" onclick="editRecord('relationships', ${r.id}, '${r.person_name}')">✏️</button>
-                        <button class="task-action-btn" onclick="deleteRecord('relationships', ${r.id})">🗑️</button>
+                        <button class="task-action-btn" onclick="logHabit(${h.id}, 1)" ${h.is_completed ? 'style="color: var(--primary-color)"' : ''}>✅</button>
+                        <button class="task-action-btn" onclick="deleteRecord('habits', ${h.id})">🗑️</button>
                     </div>
                 </div>
             `).join('');
         } else {
-            list.innerHTML = `<div class="loading">Нет записей о встречах за этот день.</div>`;
+            list.innerHTML = `<div class="loading">Нет привычек. Нажми + чтобы добавить.</div>`;
         }
         if (window.lucide) lucide.createIcons();
     } catch (e) {
-        document.getElementById('relationships-list').innerHTML = `<div class="loading">Ошибка</div>`;
+        document.getElementById('habits-list').innerHTML = `<div class="loading">Ошибка</div>`;
     }
 }
 
-async function fetchHobbies() {
-    try {
-        const tzOffset = selectedDate.getTimezoneOffset() * 60000;
-        const localISOTime = (new Date(selectedDate.getTime() - tzOffset)).toISOString().split('T')[0];
-        const res = await fetch(`/api/hobbies?date=${localISOTime}`, { headers });
-        const data = await res.json();
-        const list = document.getElementById('hobbies-list');
-        
-        let totalTime = 0;
-        if (data.hobbies && data.hobbies.length > 0) {
-            list.innerHTML = data.hobbies.map(h => {
-                totalTime += h.duration_minutes || 0;
-                return `
-                <div class="task-item task-item-simple">
-                    <div class="task-circle" style="border-color: #AF52DE;"><i data-lucide="palette" style="width: 14px; height: 14px; color: #AF52DE;"></i></div>
-                    <div class="task-content">
-                        <div class="task-text">${h.hobby_name}</div>
-                        <div class="task-meta">${h.duration_minutes} мин | ${h.notes || ''}</div>
-                    </div>
-                    <div class="task-actions">
-                        <button class="task-action-btn" onclick="editRecord('hobbies', ${h.id}, '${h.hobby_name}')">✏️</button>
-                        <button class="task-action-btn" onclick="deleteRecord('hobbies', ${h.id})">🗑️</button>
-                    </div>
-                </div>
-            `}).join('');
-        } else {
-            list.innerHTML = `<div class="loading">Нет записей о хобби за этот день.</div>`;
-        }
-        
-        document.getElementById('hobby-total-time').innerText = totalTime + ' м';
-        if (window.lucide) lucide.createIcons();
-    } catch (e) {
-        document.getElementById('hobbies-list').innerHTML = `<div class="loading">Ошибка</div>`;
-    }
-}
-
-async function saveManualRelationship() {
-    const name = document.getElementById('relationships-name').value;
-    const notes = document.getElementById('relationships-notes').value;
-    if (!name) return alert("Введите имя человека!");
+async function saveManualHabit() {
+    const name = document.getElementById('habits-name').value;
+    const frequency = document.getElementById('habits-frequency').value;
+    const target = parseInt(document.getElementById('habits-target').value) || 1;
+    const days = document.getElementById('habits-days').value || '';
     
-    const tzOffset = selectedDate.getTimezoneOffset() * 60000;
-    const localISOTime = (new Date(selectedDate.getTime() - tzOffset)).toISOString().split('T')[0];
-    const dt = `${localISOTime} 12:00`;
+    if (!name) return alert("Введите название привычки!");
 
     try {
-        await fetch('/api/relationships', {
+        await fetch('/api/habits', {
             method: 'POST',
             headers,
-            body: JSON.stringify({ person_name: name, notes: notes, date_time: dt })
+            body: JSON.stringify({ name: name, frequency_type: frequency, target_count: target, specific_days: days })
         });
-        document.getElementById('relationships-name').value = '';
-        document.getElementById('relationships-notes').value = '';
+        document.getElementById('habits-name').value = '';
         closeManualInput();
-        fetchRelationships();
+        fetchHabits();
+        fetchDashboardStats();
     } catch (e) {
         alert("Ошибка при сохранении");
     }
 }
 
-async function saveManualHobby() {
-    const name = document.getElementById('hobbies-name').value;
-    const duration = parseInt(document.getElementById('hobbies-duration').value) || 0;
-    const notes = document.getElementById('hobbies-notes').value;
-    if (!name) return alert("Введите название хобби!");
-    
-    const tzOffset = selectedDate.getTimezoneOffset() * 60000;
-    const localISOTime = (new Date(selectedDate.getTime() - tzOffset)).toISOString().split('T')[0];
-    const dt = `${localISOTime} 12:00`;
-
+async function logHabit(id, increment) {
     try {
-        await fetch('/api/hobbies', {
+        const tzOffset = new Date().getTimezoneOffset() * 60000;
+        const localISOTime = (new Date(Date.now() - tzOffset)).toISOString().split('T')[0];
+        await fetch(`/api/habits/${id}/log`, {
             method: 'POST',
             headers,
-            body: JSON.stringify({ hobby_name: name, duration_minutes: duration, notes: notes, date_time: dt })
+            body: JSON.stringify({ date: localISOTime, increment: increment })
         });
-        document.getElementById('hobbies-name').value = '';
-        document.getElementById('hobbies-duration').value = '';
-        document.getElementById('hobbies-notes').value = '';
-        closeManualInput();
-        fetchHobbies();
+        fetchHabits();
+        fetchDashboardStats();
     } catch (e) {
-        alert("Ошибка при сохранении");
+        console.error("Ошибка при логировании привычки");
     }
 }
 
@@ -1116,18 +905,16 @@ async function fetchHealth() {
         const list = document.getElementById('health-list');
         
         let totalSleep = 0;
-        let totalWater = 0;
         
         if (data.health && data.health.length > 0) {
             list.innerHTML = data.health.map(h => {
                 totalSleep += h.sleep_hours || 0;
-                totalWater += h.water_ml || 0;
                 return `
                 <div class="task-item task-item-simple">
                     <div class="task-circle" style="border-color: #FF9500;"><i data-lucide="activity" style="width: 14px; height: 14px; color: #FF9500;"></i></div>
                     <div class="task-content">
                         <div class="task-text">${h.notes || 'Запись'}</div>
-                        <div class="task-meta">Сон: ${h.sleep_hours}ч | Вода: ${h.water_ml}мл | Энергия: ${h.energy_level}/10</div>
+                        <div class="task-meta">Сон: ${h.sleep_hours}ч | Энергия: ${h.energy_level}/10</div>
                     </div>
                     <div class="task-actions">
                         <button class="task-action-btn" onclick="editRecord('health', ${h.id}, '${h.notes || 'Запись'}')">✏️</button>
@@ -1140,7 +927,6 @@ async function fetchHealth() {
         }
         
         document.getElementById('health-total-sleep').innerText = totalSleep + ' ч';
-        document.getElementById('health-total-water').innerText = totalWater + ' мл';
 
         // Fetch energy data for the chart (last 7 days)
         const res7 = await fetch(`/api/health?period=7days`, { headers });
@@ -1247,7 +1033,6 @@ async function deleteRecord(type, id) {
 
 async function saveManualHealth() {
     const sleep = document.getElementById('health-sleep').value;
-    const water = document.getElementById('health-water').value;
     const energy = document.getElementById('health-energy').value;
     const notes = document.getElementById('health-notes').value;
     
@@ -1261,14 +1046,12 @@ async function saveManualHealth() {
             headers,
             body: JSON.stringify({ 
                 sleep_hours: parseFloat(sleep) || 0, 
-                water_ml: parseInt(water) || 0, 
                 energy_level: parseInt(energy) || 0, 
                 notes: notes, 
                 date_time: dt 
             })
         });
         document.getElementById('health-sleep').value = '';
-        document.getElementById('health-water').value = '';
         document.getElementById('health-energy').value = '';
         document.getElementById('health-notes').value = '';
         closeManualInput();
@@ -1278,63 +1061,6 @@ async function saveManualHealth() {
     }
 }
 
-let currentFinanceType = 'expense';
-function setFinanceType(type) {
-    currentFinanceType = type;
-    document.getElementById('finance-type').value = type;
-    document.getElementById('finance-type-expense').style.background = type === 'expense' ? '#FF453A' : 'rgba(255,255,255,0.1)';
-    document.getElementById('finance-type-expense').style.color = type === 'expense' ? 'white' : 'rgba(255,255,255,0.5)';
-    document.getElementById('finance-type-income').style.background = type === 'income' ? '#30D158' : 'rgba(255,255,255,0.1)';
-    document.getElementById('finance-type-income').style.color = type === 'income' ? 'white' : 'rgba(255,255,255,0.5)';
-}
-
-async function fetchFinance() {
-    try {
-        const tzOffset = selectedDate.getTimezoneOffset() * 60000;
-        const localISOTime = (new Date(selectedDate.getTime() - tzOffset)).toISOString().split('T')[0];
-        
-        const res = await fetch(`/api/finance?date=${localISOTime}`, { headers });
-        const data = await res.json();
-        const list = document.getElementById('finance-list');
-        
-        let totalIncome = 0;
-        let totalExpense = 0;
-        
-        if (data.finance && data.finance.length > 0) {
-            list.innerHTML = data.finance.map(f => {
-                if (f.transaction_type === 'income') {
-                    totalIncome += f.amount || 0;
-                } else {
-                    totalExpense += f.amount || 0;
-                }
-                const isIncome = f.transaction_type === 'income';
-                const color = isIncome ? '#30D158' : '#FF453A';
-                const sign = isIncome ? '+' : '-';
-                
-                return `
-                <div class="task-item task-item-simple">
-                    <div class="task-circle" style="border-color: ${color};"><i data-lucide="dollar-sign" style="width: 14px; height: 14px; color: ${color};"></i></div>
-                    <div class="task-content">
-                        <div class="task-text">${f.category || 'Без категории'}</div>
-                        <div class="task-meta">${f.notes || ''}</div>
-                    </div>
-                    <div style="color: ${color}; font-weight: 600; font-size: 14px; white-space: nowrap;">
-                        ${sign}${f.amount} ${f.currency}
-                    </div>
-                    <div class="task-actions">
-                        <button class="task-action-btn" onclick="editRecord('finance', ${f.id}, '${f.category || 'Без категории'}')">✏️</button>
-                        <button class="task-action-btn" onclick="deleteRecord('finance', ${f.id})">🗑️</button>
-                    </div>
-                </div>
-            `}).join('');
-        } else {
-            list.innerHTML = `<div class="loading">Нет транзакций за этот день.</div>`;
-        }
-        
-        document.getElementById('finance-total-income').innerText = totalIncome + ' ₽';
-        document.getElementById('finance-total-expense').innerText = totalExpense + ' ₽';
-
-        if (window.lucide) lucide.createIcons();
     } catch (e) {
         document.getElementById('finance-list').innerHTML = `<div class="loading">Ошибка</div>`;
     }
@@ -1381,6 +1107,12 @@ async function initApp() {
         els.userName.innerText = user.first_name.charAt(0).toUpperCase();
     }
     
+    document.getElementById('habits-frequency').addEventListener('change', (e) => {
+        const val = e.target.value;
+        document.getElementById('habits-target-group').style.display = val === 'weekly' ? 'block' : 'none';
+        document.getElementById('habits-days-group').style.display = val === 'specific_days' ? 'block' : 'none';
+    });
+
     await fetchProfileStats();
     await fetchTasks();
     
@@ -1421,81 +1153,3 @@ document.addEventListener('DOMContentLoaded', () => {
     initApp();
 });
 
-// --- Swipe Logic ---
-let swipeStartX = 0;
-let swipeCurrentX = 0;
-let swipeIsDragging = false;
-const swipeThreshold = 80;
-
-function handleSwipeStart(e) {
-    if (e.touches && e.touches.length > 0) {
-        swipeStartX = e.touches[0].clientX;
-        swipeIsDragging = true;
-    }
-}
-
-function handleSwipeMove(e) {
-    if (!swipeIsDragging) return;
-    if (e.touches && e.touches.length > 0) {
-        swipeCurrentX = e.touches[0].clientX;
-        const diffX = swipeCurrentX - swipeStartX;
-        const target = e.currentTarget;
-        
-        // Limit swipe range
-        let moveX = diffX;
-        if (moveX > 100) moveX = 100;
-        if (moveX < -100) moveX = -100;
-        
-        target.style.transform = `translateX(${moveX}px)`;
-        target.style.transition = 'none';
-        
-        const parent = target.parentElement;
-        if (parent) {
-            const bgR = parent.querySelector('.task-swipe-right');
-            const bgL = parent.querySelector('.task-swipe-left');
-            if (moveX > 0) {
-                if (bgR) bgR.style.opacity = '1';
-                if (bgL) bgL.style.opacity = '0';
-            } else if (moveX < 0) {
-                if (bgR) bgR.style.opacity = '0';
-                if (bgL) bgL.style.opacity = '1';
-            }
-        }
-    }
-}
-
-function handleSwipeEnd(e, id, type) {
-    if (!swipeIsDragging) return;
-    swipeIsDragging = false;
-    
-    const diffX = swipeCurrentX - swipeStartX;
-    const target = e.currentTarget;
-    target.style.transition = 'transform 0.3s ease-out';
-    
-    if (diffX > swipeThreshold) {
-        // Swipe Right (Complete)
-        target.style.transform = `translateX(100%)`;
-        setTimeout(() => {
-            if (type === 'task') completeTask(id);
-        }, 300);
-    } else if (diffX < -swipeThreshold) {
-        // Swipe Left (Delete)
-        target.style.transform = `translateX(-100%)`;
-        setTimeout(() => {
-            if (type === 'task') deleteTask(id);
-        }, 300);
-    } else {
-        // Snap back
-        target.style.transform = `translateX(0)`;
-        const parent = target.parentElement;
-        if (parent) {
-            const bgR = parent.querySelector('.task-swipe-right');
-            const bgL = parent.querySelector('.task-swipe-left');
-            if (bgR) bgR.style.opacity = '0';
-            if (bgL) bgL.style.opacity = '0';
-        }
-    }
-    
-    swipeStartX = 0;
-    swipeCurrentX = 0;
-}
