@@ -2,7 +2,7 @@ from datetime import datetime, date, timedelta
 from sqlalchemy import select, update, delete
 from zoneinfo import ZoneInfo
 from app.database.engine import async_session
-from app.database.models import User, Category, Task, Habit, HabitLog, ChatMessage, Memory, Note, WorkoutLog, NutritionLog, InteractionLog, HobbyLog, HealthLog, FinanceLog
+from app.database.models import User, Category, Task, Habit, HabitLog, ChatMessage, Memory, Note, WorkoutLog, NutritionLog, HealthLog
 from app.config import DEFAULT_TZ
 
 async def get_all_users():
@@ -436,34 +436,7 @@ async def delete_nutrition_db(user_id: int, log_id: int):
         await session.execute(delete(NutritionLog).where(NutritionLog.id == log_id, NutritionLog.user_id == user_id))
         await session.commit()
 
-# --- Interaction Logs (Relationships) ---
-async def add_interaction(user_id: int, date_time: str, person_name: str, notes: str = None):
-    async with async_session() as session:
-        session.add(InteractionLog(user_id=user_id, date_time=date_time, person_name=person_name, notes=notes))
-        await session.commit()
 
-async def get_interactions(user_id: int, limit: int = 50):
-    async with async_session() as session:
-        query = select(InteractionLog).where(
-            InteractionLog.user_id == user_id
-        ).order_by(InteractionLog.date_time.desc()).limit(limit)
-        result = await session.scalars(query)
-        return [{"id": i.id, "date_time": i.date_time, "person_name": i.person_name, "notes": i.notes} for i in result.all()]
-
-async def get_interactions_for_date(user_id: int, target_date: date):
-    async with async_session() as session:
-        date_str = target_date.strftime("%Y-%m-%d")
-        query = select(InteractionLog).where(
-            InteractionLog.user_id == user_id,
-            InteractionLog.date_time.startswith(date_str)
-        ).order_by(InteractionLog.id.desc())
-        result = await session.scalars(query)
-        return [{"id": i.id, "date_time": i.date_time, "person_name": i.person_name, "notes": i.notes} for i in result.all()]
-
-async def delete_interaction(user_id: int, log_id: int):
-    async with async_session() as session:
-        await session.execute(delete(InteractionLog).where(InteractionLog.id == log_id, InteractionLog.user_id == user_id))
-        await session.commit()
 
 # --- Health Logs ---
 async def add_health_log(user_id: int, date_time: str, sleep_hours: float = 0, energy_level: int = 0, notes: str = None):
@@ -635,28 +608,4 @@ async def update_health_db(user_id: int, log_id: int, data: dict):
             if "notes" in data: log.notes = data["notes"]
             await session.commit()
 
-async def update_interaction_db(user_id: int, log_id: int, data: dict):
-    async with async_session() as session:
-        log = await session.scalar(select(InteractionLog).where(InteractionLog.id == log_id, InteractionLog.user_id == user_id))
-        if log:
-            if "person_name" in data: log.person_name = data["person_name"]
-            if "notes" in data: log.notes = data["notes"]
-            await session.commit()
 
-async def update_hobby_db(user_id: int, log_id: int, data: dict):
-    async with async_session() as session:
-        log = await session.scalar(select(HobbyLog).where(HobbyLog.id == log_id, HobbyLog.user_id == user_id))
-        if log:
-            if "hobby_name" in data: log.hobby_name = data["hobby_name"]
-            if "duration_minutes" in data: log.duration_minutes = data["duration_minutes"]
-            if "notes" in data: log.notes = data["notes"]
-            await session.commit()
-
-async def update_finance_log(user_id: int, log_id: int, data: dict):
-    async with async_session() as session:
-        log = await session.scalar(select(FinanceLog).where(FinanceLog.id == log_id, FinanceLog.user_id == user_id))
-        if log:
-            if "amount" in data: log.amount = data["amount"]
-            if "category" in data: log.category = data["category"]
-            if "notes" in data: log.notes = data["notes"]
-            await session.commit()
